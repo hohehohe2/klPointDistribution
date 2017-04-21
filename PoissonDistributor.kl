@@ -1,0 +1,240 @@
+require Math;
+require XOrShift;
+require PointDistribute;
+
+// [2d/3d]
+const UInt32 DIMENSION = 2;
+
+// ===============================================
+/// Worker class to find points and add them to the result points list.
+object CreatePointsWorker
+{
+	/// Shared result points list. For implementation reason points[0] is not used.
+	private Point points[];
+	/// Shared region to define where to create points.
+	private IRegion region;
+	/// Shared grid used to distribute points.
+	private IGrid grid;
+	/// Shared thread lock.
+	private SimpleLock lock;
+	/// Per thread actie list.
+	private ActiveList activeList;
+	/// Per thread random generator.
+	private XOrShift randGen;
+};
+
+function CreatePointsWorker.initialize!(io UInt32 seed, Point points[], IRegion region, IGrid grid, SimpleLock lock)
+{
+	this.points = points;
+	this.region = region;
+	this.grid = grid;
+	this.lock = lock;
+	this.activeList = ActiveList(seed);
+	this.randGen = XOrShift(seed);
+}
+
+function CreatePointsWorker.run!(Point startPoint)
+{
+	const UInt32 NUM_ITERATIONS = 30;
+
+	// Running this function in parallel can create wrong points,
+	// ie. points within the radius.
+	// We first ignore them and remove those points later.
+
+	// We chose the grid cell edge length to be the unit of length, ie. 1.0 for efficiency.
+	// The disk radius must be sqrt(2.0) and sqrt(3.0) in 2d and 3d cases
+	// respectively (See Bridson's paper for more details).
+	// Every value which has length unit must be scaled accordingly in advance.
+	Float32 radius = Float32(sqrt(DIMENSION));
+
+	this.activeList.push(startPoint);
+
+	Index activeListIndex = 0;
+	Point currentPoint = startPoint;
+
+	while(activeListIndex != UInt32Max) // While active list is not empty.
+	{
+		for(UInt32 i = 0; i < NUM_ITERATIONS; ++i)
+		{
+			Point searchPoint = currentPoint + this.uniformAnnulusDistribute(radius);
+
+			if( ! this.region.isInside(searchPoint))
+			{
+				continue;
+			}
+
+			CellCoord cellCoord = this.grid.getCellCoord(searchPoint);
+
+			//  Search neighbor cells to see if no points exists nearby.
+			UInt32 numNeighbors = 25; // [2d/3d] 125 if 3d
+			UInt32 j;
+			for(j = 0; j < numNeighbors; ++j)
+			{
+				// [2d/3d]
+				//UInt32 k = j / 25 - 2;
+				//UInt32 l = (j % 25) / 5 - 2;
+				//UInt32 m = j % 5 - 2;
+				//UInt32 cellValue = this.grid.getCellValue(cellCoord + CellCoord(k, l, m));
+				UInt32 k = j / 5 - 2;
+				UInt32 l = j % 5 - 2;
+				// We could do some early out check here by looking at the intersection
+				// of the cell and the circle/sphere search area.
+				UInt32 cellValue = this.grid.getCellValue(cellCoord + CellCoord(k, l));
+
+				if(cellValue)
+				{
+					if((this.points[cellValue] - searchPoint).lengthSquared() < radius * radius)
+					{
+						// Found a point within radius, reject this point.
+						break;
+					}
+				}
+			}
+
+			if(j == numNeighbors)
+			{
+				// No point exists nearby.
+				// This lock is used to ensure only one point is created in a single cell,
+				// also for this.points.push() which is probably not thread-safe.
+				AutoLock(this.lock);
+				if( ! this.grid.getCellValue(cellCoord))
+				{
+					this.points.push(searchPoint);
+					Index index = this.points.size() - 1;
+					this.grid.setCellValue(cellCoord, index);
+				}
+				else
+				{
+					// Another thread has created a point in the cell before this thread.
+					// This thread cannot do anymore.
+					j == 0;
+				}
+			}
+
+			if(j != numNeighbors)
+			{
+				// Could not create the next point.
+				this.activeList.removeElement(activeListIndex);
+				currentPoint = this.activeList.getRandom(activeListIndex);
+			}
+		}
+	}
+}
+
+private function Point CreatePointsWorker.uniformAnnulusDistribute!(Float32 radius)
+{
+	// [2d/3d]
+	Float32 rnd1 = this.randGen.generate01();
+	Float32 rnd2 = this.randGen.generate01();
+	Float32 r = radius * sqrt(3 * rnd1 + 1);
+	Float32 theta = rnd2 * 3.1415926 * 2;
+	return Point(r * cos(theta), r * sin(theta));
+
+	// TODO: 3D case.
+	// Inverse function	of c = 1/3*(h^3 + H^2 + h)
+	//		c: cumulative distribution function
+	//		h: uniform rand [0, 1]
+}
+
+// ===============================================
+/// Bridson's Poisson disk implementation.
+object PoissonDiskDistributor
+{
+	/// Shared result points list. For implementation reason points[0] is not used.
+	Point points[];
+	/// Shared region to define where to create points.
+	private IRegion region;
+	/// Shared grid used to distribute points.
+	private IGrid grid;	
+	/// Shared thread lock.
+	private SimpleLock lock;
+
+	CreatePointsWorker workers[];
+};
+
+private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io UInt32 seed)
+{
+	Float32 radius = Float32(sqrt(DIMENSION));
+	UInt32 maxNumTries = numThreads * 5;
+
+	XOrShift randGen(seed);
+	Point bBoxMin;
+	Point bBoxMax;
+	this.region.boundingBox(bBoxMin, bBoxMax);
+
+	for(UInt32 i = 0; i < maxNumTries; ++i)
+	{
+		// [2d/3d]
+		//Float32 x = randGen.generate(bBoxMin.x, bBoxMax.x);
+		//Float32 y = randGen.generate(bBoxMin.y, bBoxMax.y);
+		//Float32 z = randGen.generate(bBoxMin.z, bBoxMax.z);
+		//Point point(x, y, z);
+		Float32 x = randGen.generate(bBoxMin.x, bBoxMax.x);
+		Float32 y = randGen.generate(bBoxMin.y, bBoxMax.y);
+		Point point(x, y);
+
+		UInt32 pointsListSize = this.points.size();
+		if(this.region.isInside(point))
+		{
+			for(UInt32 j = 1; j < pointsListSize; ++j)
+			{
+				if((point - this.points[j]).lengthSquared() > radius * radius)
+				{
+					break;
+				}
+			}
+			this.points.push(point);
+			this.grid.setCellValue(this.grid.getCellCoord(point), this.points.size() - 1);
+			if(this.points.size() == numThreads + 1)
+			{
+				return;
+			}
+		}
+	}
+}
+
+function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
+{
+	this.points.resize(1); // Add dummy.
+	this.region = region;
+	this.lock = SimpleLock();
+
+	// Initialize grid.
+	Point bBoxMin;
+	Point bBoxMax;
+	this.region.boundingBox(bBoxMin, bBoxMax);
+
+	Float32 EPS = 1.0E-5;
+
+	// [2d/3d]
+	//GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2, bBoxMax.y - bBoxMin.y + EPS * 2, bBoxMax.z - bBoxMin.z + EPS * 2);
+	//Point origin = bBoxMin - Vec3(EPS, EPS, EPS);
+	GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2, bBoxMax.y - bBoxMin.y + EPS * 2);
+	Point origin = bBoxMin - Vec2(EPS, EPS);
+
+	this.grid = SimpleGrid(gridSize, origin);
+
+	// Initialize workers.
+	UInt32 seed = 0;
+	for(UInt32 i = 0; i < numThreads; ++i)
+	{
+		CreatePointsWorker worker();
+		worker.initialize(seed, this.points, this.region, this.grid, this.lock);
+		this.workers.push(worker);
+	}
+
+	this.initializePoints(numThreads, seed);
+
+}
+
+// ===============================================
+operator run<<<index>>>(io PoissonDiskDistributor distributor)
+{
+	if(index + 1 >= distributor.points.size())
+	{
+		return;
+	}
+	Point startPoint = distributor.points[index + 1];
+	distributor.workers[index].run(startPoint);
+}
+

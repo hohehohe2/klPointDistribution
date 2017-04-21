@@ -1,0 +1,102 @@
+require Math;
+
+// ===============================================
+alias Vec2_i CellCoord2;
+
+// ===============================================
+/// Multi-purpose cell value.
+/// value >= 0: Result points array index.
+/// value = -1: Processed not started, finished, or canceled by another thread
+/// value < -1: Counter value for multi-threading. See PoissonDistributor.kl
+alias SInt32 CellValue;
+
+// ===============================================
+/// 2d Grid interface.
+/// NOTE: Implementing spatial hashing like data structure in mind.
+interface IGrid2
+{
+	/// Get the coordinate of the cell that contains pos.
+	CellCoord2 getCellCoord(Vec2 pos);
+	/// Get the cell which coordinate is differnt from coord by the given offset.
+	CellCoord2 getNeighborCellCoord(CellCoord2 coord, Vec2_i offset);
+	/// Get the value of the cell.
+	SInt32 getCellValue(CellCoord2 coord);
+};
+
+// ===============================================
+alias Vec3_i CellCoord3;
+
+/// 3d Grid interface.
+interface IGrid3
+{
+	/// Get the coordinate of the cell that contains pos.
+	CellCoord3 getCellCoord(Vec3 pos);
+	/// Get the cell which coordinate is differnt from coord by the given offset.
+	CellCoord3 getNeighborCellCoord(CellCoord3 coord, Vec3_i offset);
+	/// Get the value of the cell.
+	SInt32 getCellValue(CellCoord3 coord);
+};
+
+// ===============================================
+/// Simple packed rectangular grid that implements IGrid2.
+object SimpleGrid2 : IGrid2
+{
+	private SInt32 cells[];
+	private Vec2_i gridSize;
+	private Vec2 translate;
+};
+
+function SimpleGrid2(Vec2_i gridSize, Vec2 translate)
+{
+	this.gridSize = gridSize;
+	this.cells.resize(gridSize.x * gridSize.y);
+	this.translate = translate;
+}
+
+function CellCoord2 SimpleGrid2.getCellCoord(Vec2 pos)
+{
+	return CellCoord2(pos.x - translate.x, pos.y - translate.y);
+}
+
+function CellCoord2 SimpleGrid2.getNeighborCellCoord(CellCoord2 coord, Vec2_i offset)
+{
+	return coord + offset;
+}
+
+SInt32 SimpleGrid2.getCellValue(CellCoord2 coord)
+{
+	Index index = coord.y * this.gridSize.x + coord.x;
+	return this.cells[index];
+}
+
+// ===============================================
+/// Simple packed rectangular grid that implements IGrid3.
+object SimpleGrid3 : IGrid3
+{
+	private SInt32 cells[];
+	private Vec3_i gridSize;
+	private Vec2 translate;
+};
+
+function SimpleGrid3(Vec3_i gridSize, Vec2 translate)
+{
+	this.gridSize = gridSize;
+	this.cells.resize(gridSize.x * gridSize.y * gridSize.z);
+	this.translate = translate;
+}
+
+function CellCoord3 SimpleGrid3.getCellCoord(Vec3 pos)
+{
+	return CellCoord3(pos.x - translate.x, pos.y - translate.y, pos.z - translate.z);
+}
+
+function CellCoord3 SimpleGrid3.getNeighborCellCoord(CellCoord3 coord, Vec3_i offset)
+{
+	return coord + offset;
+}
+
+SInt32 SimpleGrid3.getCellValue(CellCoord3 coord)
+{
+	Index index = coord.z * this.gridSize.x * this.gridSize.y + coord.y * this.gridSize.x + coord.x;
+	return this.cells[index];
+}

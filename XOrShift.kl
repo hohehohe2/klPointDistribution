@@ -1,0 +1,45 @@
+// ===============================================
+/// XOR shift random number generator.
+object XOrShift
+{
+	UInt32 seed[4];
+};
+
+// ===============================================
+function XOrShift(io UInt32 seed)
+{
+	for(Index i = 0; i < 4; ++i)
+	{
+		seed = 1812433253 * (seed ^ (seed >> 30)) + i - 1;
+		this.seed[i] = seed;
+	}
+}
+
+/// Returns [0, UInt32Max].
+function UInt32 XOrShift.generate!()
+{
+	UInt32 t = this.seed[0] ^ (this.seed[0] << 11);
+	this.seed[0] = this.seed[1];
+	this.seed[1] = this.seed[2];
+	this.seed[2] = this.seed[3];
+
+	return this.seed[3] = (this.seed[3] ^ (this.seed[3] >> 19)) ^ (t ^ (t >> 8)); 
+}
+
+/// Returns [0.0, 1.0].
+function Float32 XOrShift.generate01!()
+{
+	return this.generate() / UInt32Max;
+}
+
+/// Returns [min, max), biased.
+function SInt32 XOrShift.generate!(SInt32 min, SInt32 max)
+{
+	return this.generate() % (max - min) + min;
+}
+
+/// Returns [min, max].
+function Float32 XOrShift.generate!(Float32 min, Float32 max)
+{
+	return this.generate01() * (max - min) + min;
+}

@@ -1,0 +1,68 @@
+require Math;
+require Aliases;
+
+// ===============================================
+/// [2d/3d]
+alias Vec2_i CellCoord;
+alias Vec2_i GridSize;
+
+// ===============================================
+/// Grid interface.
+/// NOTE: Implementing spatial hashing like data structure in mind.
+interface IGrid
+{
+	/// Get the coordinate of the cell that contains pos.
+	CellCoord getCellCoord(Point pos);
+	/// Get cell value.
+	UInt32 getCellValue(CellCoord coord);
+	/// Set cell value.
+	setCellValue!(CellCoord coord, UInt32 newVal);
+};
+
+// ===============================================
+/// Simple packed rectangular grid that implements IGrid.
+// Length unit is normalized to the cell edge length, ie. cell edge length is always 1.0.
+// NOTE: This normalization is to reduce calculation cost (and making the program easier as a hidden purpose)
+// but I wouldn't do that in the real programming unless critical speed is required because it
+// makes debugging and maintenance more difficult.
+object SimpleGrid : IGrid
+{
+	private UInt32 cells[];
+	private GridSize gridSize;
+	private Point origin;
+};
+
+function SimpleGrid(GridSize gridSize, Point origin)
+{
+	this.gridSize = gridSize;
+	this.cells.resize(gridSize.x * gridSize.y);
+	this.origin = origin;
+}
+
+private function Index SimpleGrid.cellToIndex(CellCoord coord)
+{
+	// [2d/3d]
+	//return
+	//	coord.z * this.gridSize.x * this.gridSize.y +
+	//	coord.y * this.gridSize.x +
+	//	coord.x;
+	return coord.y * this.gridSize.x + coord.x;
+
+}
+
+function CellCoord SimpleGrid.getCellCoord(Point pos)
+{
+	// [2d/3d]
+	//return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y, pos.z - this.origin.z);
+	return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y);
+}
+
+function UInt32 SimpleGrid.getCellValue(CellCoord coord)
+{
+	return this.cells[this.cellToIndex(coord)];
+}
+
+function SimpleGrid.setCellValue!(CellCoord coord, UInt32 newVal)
+{
+	this.cells[this.cellToIndex(coord)] = newVal;
+}

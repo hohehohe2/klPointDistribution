@@ -1,0 +1,62 @@
+require XOrShift;
+require Math;
+
+// ===============================================
+/// Active list for PossionDiscDistributor.
+object ActiveList2
+{
+	private Vec2 list[];
+	private XOrShift randGen;
+};
+
+function ActiveList2(SInt32 seed)
+{
+	this.randGen.setSeed(seed);
+}
+
+function ActiveList2.push!(Vec2 position)
+{
+	this.list.push(position);
+}
+
+function Vec2 ActiveList2.getRandom!(out Index index)
+{
+	index = this.randGen.generate(0, this.list.size());
+	return this.list[index];
+}
+
+function ActiveList2.deleteElement!(Index index)
+{
+	this.list.swap(index, this.list.size() - 1);
+	this.list.pop();
+}
+
+// ===============================================
+/// Active list for PossionDiscDistributor.
+object ActiveList3
+{
+	private Vec3 list[];
+	private XOrShift randGen;
+};
+
+function ActiveList3(SInt32 seed)
+{
+	this.randGen.setSeed(seed);
+}
+
+function ActiveList3.push!(Vec3 position)
+{
+	this.list.push(position);
+}
+
+function Vec3 ActiveList3.getRandom!(out Index index)
+{
+	index = this.randGen.generate(0, this.list.size());
+	return this.list[index];
+}
+
+function ActiveList3.deleteElement!(Index index)
+{
+	this.list.swap(index, this.list.size() - 1);
+	this.list.pop();
+}

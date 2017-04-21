@@ -1,0 +1,40 @@
+require Math;
+require FabricSynchronization;
+require XOrShift;
+require Aliases;
+
+// ===============================================
+/// Active list for PossionDiscDistributor.
+object ActiveList	
+{
+	private Point list[];
+	private XOrShift randGen;
+};
+
+function ActiveList(io UInt32 seed)
+{
+	this.randGen = XOrShift(seed);
+}
+
+function ActiveList.push!(Point position)
+{
+	this.list.push(position);
+}
+
+/// Get a point randomly from the active list and set the list's index to the argumenet index.
+/// If the list size is 0, it sets UInt32Max to index. 
+function Point ActiveList.getRandom!(out Index index)
+{
+	if(this.list.size() == 0)
+	{
+		index = UInt32Max;
+	}
+	index = this.randGen.generate(0, this.list.size());
+	return this.list[index];
+}
+
+function ActiveList.removeElement!(Index index)
+{
+	this.list.swap(index, this.list.size() - 1);
+	this.list.pop();
+}
