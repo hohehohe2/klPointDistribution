@@ -258,22 +258,27 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
 }
 
 // ===============================================
-operator run<<<index>>>(io PoissonDiskDistributor distributor)
+operator run<<<index>>>(io Ref<PoissonDiskDistributor> distributor)
 {
-	if(index + 1 >= distributor.points.size())
-	{
-		return;
-	}
 	Point startPoint = distributor.points[index + 1];
 	distributor.workers[index].run(startPoint);
+}
+
+// ===============================================
+function PoissonDiskDistributor.run!()
+{
+	UInt32 numThreads = Math_min(getThreadCount(), this.points.size() - 1);
+	run<<<numThreads>>>(this);
 }
 
 operator entry() {
 	UInt32 numThreads = getThreadCount();
 	SimpleRectRegion region(Point(0.0, 0.0), Point(10.0, 10.0));
 	PoissonDiskDistributor distributor(numThreads, region);
-	run<<<numThreads>>>(distributor);
 
+	distributor.run();
+
+	// Display result.
 	Point bBoxMin, bBoxMax;
 	region.getBoundingBox(bBoxMin, bBoxMax);
 	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
