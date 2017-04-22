@@ -29,11 +29,11 @@ function UInt32 XOrShift.generate!()
 /// Returns [0.0, 1.0].
 function Float32 XOrShift.generate01!()
 {
-	return this.generate() / UInt32Max;
+	return Float32(this.generate()) / UInt32Max;
 }
 
 /// Returns [min, max), biased.
-function SInt32 XOrShift.generate!(SInt32 min, SInt32 max)
+function UInt32 XOrShift.generate!(UInt32 min, UInt32 max)
 {
 	return this.generate() % (max - min) + min;
 }

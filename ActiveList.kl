@@ -28,6 +28,7 @@ function Point ActiveList.getRandom!(out Index index)
 	if(this.list.size() == 0)
 	{
 		index = UInt32Max;
+		return Point();
 	}
 	index = this.randGen.generate(0, this.list.size());
 	return this.list[index];

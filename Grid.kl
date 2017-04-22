@@ -11,6 +11,8 @@ alias Vec2_i GridSize;
 /// NOTE: Implementing spatial hashing like data structure in mind.
 interface IGrid
 {
+	/// Get the grid size.
+	GridSize getGridSize();
 	/// Get the coordinate of the cell that contains pos.
 	CellCoord getCellCoord(Point pos);
 	/// Get cell value.
@@ -37,6 +39,11 @@ function SimpleGrid(GridSize gridSize, Point origin)
 	this.gridSize = gridSize;
 	this.cells.resize(gridSize.x * gridSize.y);
 	this.origin = origin;
+}
+
+function GridSize SimpleGrid.getGridSize()
+{
+	return this.gridSize;	
 }
 
 private function Index SimpleGrid.cellToIndex(CellCoord coord)

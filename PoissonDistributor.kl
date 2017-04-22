@@ -47,6 +47,8 @@ function CreatePointsWorker.run!(Point startPoint)
 	// Every value which has length unit must be scaled accordingly in advance.
 	Float32 radius = Float32(sqrt(DIMENSION));
 
+	GridSize gridSize = this.grid.getGridSize();
+
 	this.activeList.push(startPoint);
 
 	Index activeListIndex = 0;
@@ -54,7 +56,8 @@ function CreatePointsWorker.run!(Point startPoint)
 
 	while(activeListIndex != UInt32Max) // While active list is not empty.
 	{
-		for(UInt32 i = 0; i < NUM_ITERATIONS; ++i)
+		UInt32 i;
+		for(i = 0; i < NUM_ITERATIONS; ++i)
 		{
 			Point searchPoint = currentPoint + this.uniformAnnulusDistribute(radius);
 
@@ -79,7 +82,14 @@ function CreatePointsWorker.run!(Point startPoint)
 				UInt32 l = j % 5 - 2;
 				// We could do some early out check here by looking at the intersection
 				// of the cell and the circle/sphere search area.
-				UInt32 cellValue = this.grid.getCellValue(cellCoord + CellCoord(k, l));
+				CellCoord crd = cellCoord + CellCoord(k, l);
+				// [2d/3d]
+				//if(crd.x < 0 || crd.y < 0 || crd.x >= gridSize.x || crd.y >= gridSize.y || crd.z >= gridSize.z)
+				if(crd.x < 0 || crd.y < 0 || crd.x >= gridSize.x || crd.y >= gridSize.y)
+				{
+					continue;
+				}
+				UInt32 cellValue = this.grid.getCellValue(crd);
 
 				if(cellValue)
 				{
@@ -97,26 +107,27 @@ function CreatePointsWorker.run!(Point startPoint)
 				// This lock is used to ensure only one point is created in a single cell,
 				// also for this.points.push() which is probably not thread-safe.
 				AutoLock(this.lock);
+
+				// Another thread can create a point in the cell before this thread.
+				// Check if no point has been created yet.
 				if( ! this.grid.getCellValue(cellCoord))
 				{
 					this.points.push(searchPoint);
 					Index index = this.points.size() - 1;
 					this.grid.setCellValue(cellCoord, index);
+					currentPoint = searchPoint;
+					this.activeList.push(searchPoint);
 				}
-				else
-				{
-					// Another thread has created a point in the cell before this thread.
-					// This thread cannot do anymore.
-					j == 0;
-				}
-			}
 
-			if(j != numNeighbors)
-			{
-				// Could not create the next point.
-				this.activeList.removeElement(activeListIndex);
-				currentPoint = this.activeList.getRandom(activeListIndex);
+				break;
 			}
+		}
+
+		if(i == NUM_ITERATIONS)
+		{
+			// Could not create the next point.
+			this.activeList.removeElement(activeListIndex);
+			currentPoint = this.activeList.getRandom(activeListIndex);
 		}
 	}
 }
@@ -160,7 +171,7 @@ private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io 
 	XOrShift randGen(seed);
 	Point bBoxMin;
 	Point bBoxMax;
-	this.region.boundingBox(bBoxMin, bBoxMax);
+	this.region.getBoundingBox(bBoxMin, bBoxMax);
 
 	for(UInt32 i = 0; i < maxNumTries; ++i)
 	{
@@ -176,15 +187,21 @@ private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io 
 		UInt32 pointsListSize = this.points.size();
 		if(this.region.isInside(point))
 		{
-			for(UInt32 j = 1; j < pointsListSize; ++j)
+			UInt32 j;
+			for(j = 1; j < pointsListSize; ++j)
 			{
-				if((point - this.points[j]).lengthSquared() > radius * radius)
+				if((point - this.points[j]).lengthSquared() < radius * radius)
 				{
 					break;
 				}
 			}
-			this.points.push(point);
-			this.grid.setCellValue(this.grid.getCellCoord(point), this.points.size() - 1);
+
+			if(j == pointsListSize)
+			{
+				this.points.push(point);
+				this.grid.setCellValue(this.grid.getCellCoord(point), this.points.size() - 1);
+			}
+
 			if(this.points.size() == numThreads + 1)
 			{
 				return;
@@ -202,7 +219,7 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
 	// Initialize grid.
 	Point bBoxMin;
 	Point bBoxMax;
-	this.region.boundingBox(bBoxMin, bBoxMax);
+	this.region.getBoundingBox(bBoxMin, bBoxMax);
 
 	Float32 EPS = 1.0E-5;
 
@@ -236,5 +253,23 @@ operator run<<<index>>>(io PoissonDiskDistributor distributor)
 	}
 	Point startPoint = distributor.points[index + 1];
 	distributor.workers[index].run(startPoint);
+}
+
+operator entry() {
+	UInt32 numThreads = getThreadCount();
+	SimpleRectRegion region(Point(0.0, 0.0), Point(10.0, 10.0));
+	PoissonDiskDistributor distributor(numThreads, region);
+	run<<<numThreads>>>(distributor);
+
+	Point bBoxMin, bBoxMax;
+	region.getBoundingBox(bBoxMin, bBoxMax);
+	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
+	report("p = []");
+	for(UInt32 i = 1; i < distributor.points.size(); ++i)
+	{
+		Float32 x = distributor.points[i].x;
+		Float32 y = distributor.points[i].y;
+		report("p.append((" + x + ", " + y + "))");
+	}
 }
 

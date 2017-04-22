@@ -8,7 +8,7 @@ require Aliases;
 interface IRegion
 {
 	/// Get the bounding box of the region.
-	boundingBox(io Point bBoxMin, io Point bBoxMax);
+	getBoundingBox(io Point bBoxMin, io Point bBoxMax);
 	/// Test if the point is inside the region.
 	Boolean isInside(Point point);
 };
@@ -26,7 +26,7 @@ function SimpleRectRegion(Point bBoxMin, Point bBoxMax)
 	this.bBoxMax = bBoxMax;
 }
 
-function SimpleRectRegion.boundingBox(io Point bBoxMin, io Point bBoxMax)
+function SimpleRectRegion.getBoundingBox(io Point bBoxMin, io Point bBoxMax)
 {
 	bBoxMin = this.bBoxMin;
 	bBoxMax = this.bBoxMax;
@@ -40,7 +40,7 @@ function Boolean SimpleRectRegion.isInside(Point point)
 	//	(this.bBoxMin.y < point.y && point.y < this.bBoxMin.y) &&
 	//	(this.bBoxMin.z < point.z && point.z < this.bBoxMin.z);
 	return
-		(this.bBoxMin.x < point.x && point.x < this.bBoxMin.x) &&
-		(this.bBoxMin.y < point.y && point.y < this.bBoxMin.y); 
+		(this.bBoxMin.x < point.x && point.x < this.bBoxMax.x) &&
+		(this.bBoxMin.y < point.y && point.y < this.bBoxMax.y); 
 }
 	
