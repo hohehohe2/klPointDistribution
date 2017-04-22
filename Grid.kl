@@ -15,6 +15,8 @@ interface IGrid
 	GridSize getGridSize();
 	/// Get the coordinate of the cell that contains pos.
 	CellCoord getCellCoord(Point pos);
+	/// Returns true if there's a cell for the coordinate exists.
+	Boolean isValidCellCoord(CellCoord coord);
 	/// Get cell value.
 	UInt32 getCellValue(CellCoord coord);
 	/// Set cell value.
@@ -63,6 +65,13 @@ function CellCoord SimpleGrid.getCellCoord(Point pos)
 function UInt32 SimpleGrid.getCellValue(CellCoord coord)
 {
 	return this.cells[this.cellToIndex(coord)];
+}
+
+function Boolean SimpleGrid.isValidCellCoord(CellCoord coord)
+{
+	// [2d/3d]
+	//return coord.x >= 0 && coord.y >= 0 && coord.z >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y && coord.z < this.gridSize.z;
+	return coord.x >= 0 && coord.y >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y;
 }
 
 function SimpleGrid.setCellValue!(CellCoord coord, UInt32 newVal)

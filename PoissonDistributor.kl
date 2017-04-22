@@ -6,6 +6,63 @@ require PointDistribute;
 const UInt32 DIMENSION = 2;
 
 // ===============================================
+/// Utility class to find if neighbor points exist
+object GridNeighborFinder
+{
+	/// Shared result points list. For implementation reason points[0] is not used.
+	private Point points[];
+	/// Shared grid used to distribute points.
+	private IGrid grid;
+};
+
+function GridNeighborFinder(Point points[], IGrid grid)
+{
+	this.points = points;
+	this.grid = grid;
+}
+
+/// Returns true if neighbor is found.
+function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 radius)
+{
+	CellCoord cellCoord = this.grid.getCellCoord(searchPoint);
+
+	//  Search neighbor cells to see if no points exists nearby.
+	UInt32 numNeighbors = 25; // [2d/3d] 125 if 3d
+	for(UInt32 j = 0; j < numNeighbors; ++j)
+	{
+		// [2d/3d]
+		//UInt32 k = j / 25 - 2;
+		//UInt32 l = (j % 25) / 5 - 2;
+		//UInt32 m = j % 5 - 2;
+		//CellCoord crd = cellCoord + CellCoord(k, l, m);
+		UInt32 k = j / 5 - 2;
+		UInt32 l = j % 5 - 2;
+		CellCoord crd = cellCoord + CellCoord(k, l);
+
+		if( ! this.grid.isValidCellCoord(crd))
+		{
+			continue;
+		}
+
+		// We could do some more early out check here by looking at the intersection
+		// of the cell and the circle/sphere search area.
+
+		UInt32 cellValue = this.grid.getCellValue(crd);
+
+		if(cellValue)
+		{
+			if((this.points[cellValue] - searchPoint).lengthSquared() < radius * radius)
+			{
+				// Found a point within radius, reject this point.
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+// ===============================================
 /// Worker class to find points and add them to the result points list.
 object CreatePointsWorker
 {
@@ -51,8 +108,7 @@ function CreatePointsWorker.run!(Point startPoint)
 	// NOTE: because it makes debugging and maintenance more difficult.
 
 	Float32 radius = Float32(sqrt(DIMENSION));
-
-	GridSize gridSize = this.grid.getGridSize();
+	GridNeighborFinder gnFinder(this.points, this.grid);
 
 	this.activeList.push(startPoint);
 
@@ -73,43 +129,8 @@ function CreatePointsWorker.run!(Point startPoint)
 
 			CellCoord cellCoord = this.grid.getCellCoord(searchPoint);
 
-			//  Search neighbor cells to see if no points exists nearby.
-			UInt32 numNeighbors = 25; // [2d/3d] 125 if 3d
-			UInt32 j;
-			for(j = 0; j < numNeighbors; ++j)
+			if( ! gnFinder.isNeighborExists(searchPoint, radius))
 			{
-				// [2d/3d]
-				//UInt32 k = j / 25 - 2;
-				//UInt32 l = (j % 25) / 5 - 2;
-				//UInt32 m = j % 5 - 2;
-				//UInt32 cellValue = this.grid.getCellValue(cellCoord + CellCoord(k, l, m));
-				UInt32 k = j / 5 - 2;
-				UInt32 l = j % 5 - 2;
-				// We could do some early out check here by looking at the intersection
-				// of the cell and the circle/sphere search area.
-				CellCoord crd = cellCoord + CellCoord(k, l);
-				// [2d/3d]
-				//if(crd.x < 0 || crd.y < 0 || crd.x >= gridSize.x || crd.y >= gridSize.y || crd.z >= gridSize.z)
-				if(crd.x < 0 || crd.y < 0 || crd.x >= gridSize.x || crd.y >= gridSize.y)
-				{
-					continue;
-				}
-				UInt32 cellValue = this.grid.getCellValue(crd);
-
-				if(cellValue)
-				{
-					if((this.points[cellValue] - searchPoint).lengthSquared() < radius * radius)
-					{
-						// Found a point within radius, reject this point.
-						break;
-					}
-				}
-			}
-
-			if(j == numNeighbors)
-			{
-				// No point exists nearby.
-
 				Index index = UInt32Max;
 
 				// This lock is used to ensure only one point is created in a single cell,
@@ -120,20 +141,23 @@ function CreatePointsWorker.run!(Point startPoint)
 					// Check if no point has been created yet.
 					if( ! this.grid.getCellValue(cellCoord))
 					{
-						// Create Point here!
+						// We can create point!
 						this.points.push(searchPoint);
 						index = this.points.size() - 1;
 					}
 				}
 
-				// NOTE: Setting a value to an array element should be thread safe.
-				// NOTE: but there may be a slight change it is not, due to bounds
-				// NOTE: check or something. I could not find a documentation on it.
-				this.grid.setCellValue(cellCoord, index);
-				currentPoint = searchPoint;
-				this.activeList.push(searchPoint);
+				if(index != UInt32Max)
+				{
+					// NOTE: Setting a value to an array element should be thread safe.
+					// NOTE: but there may be a slight change it is not, due to bounds
+					// NOTE: check or something. I could not find a documentation on it.
+					this.grid.setCellValue(cellCoord, index);
+					currentPoint = searchPoint;
+					this.activeList.push(searchPoint);
+					break;
+				}
 
-				break;
 			}
 		}
 
@@ -254,21 +278,34 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
 		this.workers.push(worker);
 	}
 
+	// Create the first points for each thread to start with.
 	this.initializePoints(numThreads, seed);
 }
 
 // ===============================================
-operator run<<<index>>>(io Ref<PoissonDiskDistributor> distributor)
+operator distributePoints<<<index>>>(io Ref<PoissonDiskDistributor> distributor)
 {
 	Point startPoint = distributor.points[index + 1];
 	distributor.workers[index].run(startPoint);
 }
 
+// // ===============================================
+// /// Find wrong points, do not delete from the points.
+// operator findWrongPoints<<<index>>>(Point points[], IRegion region, IGrid grid, Index startIndex, Index endIndex)
+// {
+// 	for(Index i = startIndex; i < endIndex; ++i)
+// 	{
+// 		Point point = points[i];
+// 		CellCoord coord = grid.getCellCoord(point);
+// 		UInt32 cellValue = grid.getCellValue(coord);
+// 	}
+// }
+
 // ===============================================
 function PoissonDiskDistributor.run!()
 {
 	UInt32 numThreads = Math_min(getThreadCount(), this.points.size() - 1);
-	run<<<numThreads>>>(this);
+	distributePoints<<<numThreads>>>(this);
 }
 
 operator entry() {
