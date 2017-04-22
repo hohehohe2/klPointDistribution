@@ -3,7 +3,7 @@ require PointDistribute;
 operator entry() {
 
 	// Region to sprinkle points.
-	SimpleRectRegion region(Point(-20.6, -30.4), Point(50.0, 10.0));
+	SimpleRectRegion region(Point(-10.6, -10.4), Point(10.0, 10.0));
 
 	// Result array.
 	Point points[];
@@ -27,8 +27,9 @@ operator entry() {
 	// Find very small number of wrong points due to multi-threading.
 
 	UInt32 wrongPointIndices[];
+	wrongPointIndices.resize(pData.numPoints);
 	SimpleLock lock();
-	findWrongPoints<<<numPexThreads>>>(wrongPointIndices, pData, numPexThreads);
+	findWrongPoints<<<pData.numPoints>>>(wrongPointIndices, pData);
 
 	// Remove them in single thread.
 	removeWrongPoints(pData, wrongPointIndices);
@@ -44,8 +45,8 @@ operator entry() {
 	{
 		Float32 x = points[i].x;
 		Float32 y = points[i].y;
-		//report("p.append((" + x + ", " + y + "))");
+		report("p.append((" + x + ", " + y + "))");
 	}
-	report(pData.numPoints - 1);
+	//report(pData.numPoints - 1);
 }
 

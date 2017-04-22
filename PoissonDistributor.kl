@@ -279,58 +279,42 @@ operator distributePoints<<<index>>>(io PoissonDiskData pData, io PoissonDiskDis
 }
 
 // ===============================================
-/// Find wrong points and stores the indices to wrongPointIndices[].
-operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], PoissonDiskData pData, UInt32 numPexThreads)
+/// Find wrong points and set 1 to wrongPointIndices[].
+operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], PoissonDiskData pData)
 {
 	Float32 radius = Float32(sqrt(DIMENSION));
 	GridNeighborFinder gnFinder(pData.points, pData.grid);
 
-	UInt32 startIndex;
-	UInt32 endIndex;
-
-	if(pData.numPoints < numPexThreads)
-	{
-		startIndex = 1;
-		endIndex = (index == 0)? pData.numPoints + 1 : 0;
-	}
-	else
-	{
-		UInt32 mod = pData.numPoints % numPexThreads;
-		UInt32 load = (pData.numPoints - mod) / numPexThreads;
-
-		startIndex = load * index + 1;
-		endIndex = startIndex + load + 1;
-		if(index == numPexThreads - 1)
-		{
-			endIndex += mod;
-		}
-	}
-
-	for(Index i = startIndex; i < endIndex; ++i)
-	{
-		Point point = pData.points[i];
-		if(gnFinder.isNeighborExists(point, radius, true))
-		{
-			AutoLock(pData.lock);
-			wrongPointIndices.push(index + 1);
-		}
-	}
+	Point point = pData.points[index + 1];
+	wrongPointIndices[index] = gnFinder.isNeighborExists(point, radius, true);
 }
 
 function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
 {
-	// Truncate pData.points. Does pData.resize() enough?
+	Float32 radius = Float32(sqrt(DIMENSION));
+	GridNeighborFinder gnFinder(pData.points, pData.grid);
+
+	// Can we just use pData.resize() ?
 	Point newPoints[];
-	newPoints.resize(pData.numPoints);
-	for(UInt32 i = 0; i < pData.numPoints; ++i)
+	newPoints.resize(pData.numPoints + 1);
+	for(UInt32 i = 1; i < pData.numPoints + 1; ++i)
 	{
 		newPoints[i] = pData.points[i];
 	}
 	swap(newPoints, pData.points);
 
-	for(UInt32 i = 0; i < wrongPointIndices.size(); ++i)
+	for(UInt32 i = 0; i < pData.numPoints; ++i)
 	{
-		pData.points.swap(i, pData.points.size() - 1);
-		pData.points.pop();
+		if( ! wrongPointIndices[i])
+		{
+			continue;
+		}
+
+		Point point = pData.points[i + 1];
+		if(gnFinder.isNeighborExists(point, radius, true))
+		{
+			pData.points.swap(i + 1, pData.points.size() - 1);
+			pData.points.pop();
+		}
 	}
 }
