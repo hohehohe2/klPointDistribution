@@ -104,20 +104,29 @@ function CreatePointsWorker.run!(Point startPoint)
 			if(j == numNeighbors)
 			{
 				// No point exists nearby.
+
+				Index index = UInt32Max;
+
 				// This lock is used to ensure only one point is created in a single cell,
 				// also for this.points.push() which is probably not thread-safe.
-				AutoLock(this.lock);
-
-				// Another thread can create a point in the cell before this thread.
-				// Check if no point has been created yet.
-				if( ! this.grid.getCellValue(cellCoord))
 				{
-					this.points.push(searchPoint);
-					Index index = this.points.size() - 1;
-					this.grid.setCellValue(cellCoord, index);
-					currentPoint = searchPoint;
-					this.activeList.push(searchPoint);
+					AutoLock(this.lock);
+					// Another thread can create a point in the cell before this thread.
+					// Check if no point has been created yet.
+					if( ! this.grid.getCellValue(cellCoord))
+					{
+						// Create Point here!
+						this.points.push(searchPoint);
+						index = this.points.size() - 1;
+					}
 				}
+
+				// NOTE: Setting a value to an array element should be thread safe.
+				// NOTE: but there may be a slight change it is not, due to bounds
+				// NOTE: check or something. I could not find a documentation on it.
+				this.grid.setCellValue(cellCoord, index);
+				currentPoint = searchPoint;
+				this.activeList.push(searchPoint);
 
 				break;
 			}
