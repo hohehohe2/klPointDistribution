@@ -24,6 +24,8 @@ operator entry() {
 	}
 	distributePoints<<<numPexThreads>>>(pData, distributors);
 
+	report("# points: " + pData.numPoints);
+
 	// Find very small number of wrong points due to multi-threading.
 
 	UInt32 wrongPointIndices[];
@@ -34,14 +36,12 @@ operator entry() {
 	// Remove them in single thread.
 	removeWrongPoints(pData, wrongPointIndices);
 
-	// report("wrong " + wrongPointIndices.size());
-
 	// Display result.
 	Point bBoxMin, bBoxMax;
 	region.getBoundingBox(bBoxMin, bBoxMax);
 	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
 	report("p = []");
-	for(UInt32 i = 1; i < pData.numPoints; ++i)
+	for(UInt32 i = 0; i < pData.numPoints; ++i)
 	{
 		Float32 x = points[i].x;
 		Float32 y = points[i].y;

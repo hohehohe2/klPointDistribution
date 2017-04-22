@@ -32,8 +32,12 @@ object SimpleGrid : IGrid
 function SimpleGrid(GridSize gridSize, Point origin)
 {
 	this.gridSize = gridSize;
-	this.cells.resize(gridSize.x * gridSize.y);
 	this.origin = origin;
+	this.cells.resize(gridSize.x * gridSize.y);
+	for(UInt32 i = 0; i < gridSize.x * gridSize.y; ++i)
+	{
+		this.cells[i] = UInt32Max;
+	}
 }
 
 function GridSize SimpleGrid.getGridSize()
@@ -59,6 +63,13 @@ function CellCoord SimpleGrid.getCellCoord(Point pos)
 	return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y);
 }
 
+function Boolean SimpleGrid.isValidCellCoord(CellCoord coord)
+{
+	// [2d/3d]
+	//return coord.x >= 0 && coord.y >= 0 && coord.z >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y && coord.z < this.gridSize.z;
+	return coord.x >= 0 && coord.y >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y;
+}
+
 // NOTE: A cell value contains an array index where the point coordinate is
 // NOTE: When a thread creates a point, it
 // NOTE: 	a) Stores the point coordinate to the points[] array.
@@ -76,13 +87,6 @@ function CellCoord SimpleGrid.getCellCoord(Point pos)
 function UInt32 SimpleGrid.getCellValue(CellCoord coord)
 {
 	return this.cells[this.cellToIndex(coord)];
-}
-
-function Boolean SimpleGrid.isValidCellCoord(CellCoord coord)
-{
-	// [2d/3d]
-	//return coord.x >= 0 && coord.y >= 0 && coord.z >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y && coord.z < this.gridSize.z;
-	return coord.x >= 0 && coord.y >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y;
 }
 
 function SimpleGrid.setCellValue!(CellCoord coord, UInt32 newVal)

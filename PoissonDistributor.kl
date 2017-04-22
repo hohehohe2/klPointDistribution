@@ -7,7 +7,7 @@ const UInt32 DIMENSION = 2;
 /// Utility class to find if neighbor points exist
 object GridNeighborFinder
 {
-	/// Shared result points list. For implementation reason points[0] is not used.
+	/// Shared result points list.
 	private Point points[];
 	/// Shared grid used to distribute points.
 	private IGrid grid;
@@ -55,12 +55,11 @@ function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 
 		// of the cell and the circle/sphere search area.
 
 		UInt32 cellValue = this.grid.getCellValue(crd);
-
-		if(cellValue)
+		if(cellValue != UInt32Max) // If point exists
 		{
 			if((this.points[cellValue] - searchPoint).lengthSquared() < radius * radius)
 			{
-				// Found a point within radius, reject this point.
+				// Found a point within radius.
 				return true;
 			}
 		}
@@ -113,7 +112,7 @@ private function PoissonDiskData.initializePoints!(UInt32 numPexThreads, io UInt
 		if(this.region.isInside(point))
 		{
 			UInt32 j;
-			for(j = 1; j < this.numPoints + 1; ++j)
+			for(j = 0; j < this.numPoints; ++j)
 			{
 				if((point - this.points[j]).lengthSquared() < radius * radius)
 				{
@@ -121,11 +120,11 @@ private function PoissonDiskData.initializePoints!(UInt32 numPexThreads, io UInt
 				}
 			}
 
-			if(j == this.numPoints + 1)
+			if(j == this.numPoints)
 			{
-				++this.numPoints;
 				this.points[this.numPoints] = point;
 				this.grid.setCellValue(this.grid.getCellCoord(point), this.numPoints);
+				++this.numPoints;
 			}
 
 			if(this.numPoints == numPexThreads)
@@ -226,14 +225,14 @@ function PoissonDiskDistributor.run!(Point startPoint)
 				// also for array push() which is not thread-safe.
 				{
 					AutoLock(this.pData.lock);
-					// Check if no point has been/is being created by another thread.
-					if( ! this.pData.grid.getCellValue(cellCoord))
+					// Make sure no point has been created by another thread.
+					if(this.pData.grid.getCellValue(cellCoord) == UInt32Max)
 					{
 						// We can create a point!
-						this.pData.numPoints.atomicInc();
-						this.pData.points[this.pData.numPoints] = searchPoint;
-						index = this.pData.points.size() - 1;
+						index = this.pData.numPoints;
+						this.pData.points[index] = searchPoint;
 						this.pData.grid.setCellValue(cellCoord, index);
+						++this.pData.numPoints;
 					}
 				}
 
@@ -274,7 +273,7 @@ private function Point PoissonDiskDistributor.uniformAnnulusDistribute!(Float32 
 // ===============================================
 operator distributePoints<<<index>>>(io PoissonDiskData pData, io PoissonDiskDistributor workers[])
 {
-	Point startPoint = pData.points[index + 1];
+	Point startPoint = pData.points[index];
 	workers[index].run(startPoint);
 }
 
@@ -285,7 +284,7 @@ operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], PoissonDiskDa
 	Float32 radius = Float32(sqrt(DIMENSION));
 	GridNeighborFinder gnFinder(pData.points, pData.grid);
 
-	Point point = pData.points[index + 1];
+	Point point = pData.points[index];
 	wrongPointIndices[index] = gnFinder.isNeighborExists(point, radius, true);
 }
 
@@ -296,8 +295,8 @@ function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
 
 	// Can we just use pData.resize() ?
 	Point newPoints[];
-	newPoints.resize(pData.numPoints + 1);
-	for(UInt32 i = 1; i < pData.numPoints + 1; ++i)
+	newPoints.resize(pData.numPoints);
+	for(UInt32 i = 0; i < pData.numPoints; ++i)
 	{
 		newPoints[i] = pData.points[i];
 	}
@@ -310,10 +309,10 @@ function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
 			continue;
 		}
 
-		Point point = pData.points[i + 1];
+		Point point = pData.points[i];
 		if(gnFinder.isNeighborExists(point, radius, true))
 		{
-			pData.points.swap(i + 1, pData.points.size() - 1);
+			pData.points.swap(i, pData.points.size() - 1);
 			pData.points.pop();
 		}
 	}
