@@ -1,0 +1,34 @@
+require PointDistribute;
+
+operator entry() {
+	Counter counter();
+	SimpleRectRegion region(Point(-20.6, -30.4), Point(50.0, 10.0));
+	Point points[];
+	points.resize(65536);
+
+	UInt32 numPexThreads = getThreadCount();
+	PoissonDiskDistributor distributor(numPexThreads, region, points, counter);
+	
+	numPexThreads = Math_min(numPexThreads, counter.count);
+	distributePoints<<<numPexThreads>>>(distributor);
+
+	UInt32 wrongPointIndices[];
+	SimpleLock lock();
+	findWrongPoints<<<numPexThreads>>>(wrongPointIndices, points, distributor.grid, numPexThreads, lock, counter.count);
+
+	report("wrong " + wrongPointIndices.size());
+
+	// Display result.
+	Point bBoxMin, bBoxMax;
+	region.getBoundingBox(bBoxMin, bBoxMax);
+	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
+	report("p = []");
+	for(UInt32 i = 1; i < counter.count; ++i)
+	{
+		Float32 x = points[i].x;
+		Float32 y = points[i].y;
+		report("p.append((" + x + ", " + y + "))");
+	}
+	report(counter.count - 1);
+}
+
