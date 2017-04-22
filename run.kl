@@ -1,35 +1,51 @@
 require PointDistribute;
 
 operator entry() {
-	Counter counter();
+
+	// Region to sprinkle points.
 	SimpleRectRegion region(Point(-20.6, -30.4), Point(50.0, 10.0));
+
+	// Result array.
 	Point points[];
 	points.resize(65536);
 
-	//UInt32 numPexThreads = getThreadCount();
-	UInt32 numPexThreads = 1;
-	PoissonDiskDistributor distributor(numPexThreads, region, points, counter);
-	
-	numPexThreads = Math_min(numPexThreads, counter.count);
-	distributePoints<<<numPexThreads>>>(distributor);
+	// Distribute.
+
+	UInt32 seed = 0;
+	UInt32 numPexThreads = getThreadCount();
+	//UInt32 numPexThreads = 1;
+	PoissonDiskData pData(numPexThreads, points, region, seed);
+	numPexThreads = Math_min(numPexThreads, pData.numPoints);
+
+	PoissonDiskDistributor distributors[];
+	for(UInt32 i = 0; i < numPexThreads; ++i)
+	{
+		distributors.push(PoissonDiskDistributor(seed, pData));
+	}
+	distributePoints<<<numPexThreads>>>(pData, distributors);
+
+	// Find very small number of wrong points due to multi-threading.
 
 	UInt32 wrongPointIndices[];
 	SimpleLock lock();
-	findWrongPoints<<<numPexThreads>>>(wrongPointIndices, points, distributor.grid, numPexThreads, lock, counter.count);
+	findWrongPoints<<<numPexThreads>>>(wrongPointIndices, pData, numPexThreads);
 
-	report("wrong " + wrongPointIndices.size());
+	// Remove them in single thread.
+	removeWrongPoints(pData, wrongPointIndices);
+
+	// report("wrong " + wrongPointIndices.size());
 
 	// Display result.
 	Point bBoxMin, bBoxMax;
 	region.getBoundingBox(bBoxMin, bBoxMax);
 	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
 	report("p = []");
-	for(UInt32 i = 1; i < counter.count; ++i)
+	for(UInt32 i = 1; i < pData.numPoints; ++i)
 	{
 		Float32 x = points[i].x;
 		Float32 y = points[i].y;
 		//report("p.append((" + x + ", " + y + "))");
 	}
-	report(counter.count - 1);
+	report(pData.numPoints - 1);
 }
 

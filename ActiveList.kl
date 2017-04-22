@@ -1,6 +1,6 @@
 
 // ===============================================
-/// Active list for PossionDiscDistributor.
+/// Active list for PoissonDiskDistributor.
 object ActiveList	
 {
 	private Point list[];

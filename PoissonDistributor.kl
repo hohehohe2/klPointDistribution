@@ -3,11 +3,6 @@ require FabricSynchronization;
 // [2d/3d]
 const UInt32 DIMENSION = 2;
 
-object Counter
-{
-	UInt32 count;
-};
-
 // ===============================================
 /// Utility class to find if neighbor points exist
 object GridNeighborFinder
@@ -75,36 +70,116 @@ function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 
 }
 
 // ===============================================
-/// Worker class to find points and add them to the result points list.
-object CreatePointsWorker
+/// Thread shared data for Poisson disk calculation.
+object PoissonDiskData
 {
-	/// Shared result points list. For implementation reason points[0] is not used.
-	private Point points[];
-	/// Shared region to define where to create points.
-	private IRegion region;
-	/// Shared grid used to distribute points.
-	private IGrid grid;
-	/// Shared thread lock.
-	private SimpleLock lock;
-	private Counter counter;
-	/// Per thread actie list.
+	/// result points list. For implementation reason points[0] is not used.
+	Point points[];
+	/// Number of created points.
+	UInt32 numPoints;
+	/// grid used to distribute points.
+	IGrid grid;
+	/// region to define where to create points.
+	IRegion region;
+	/// thread lock.
+	SimpleLock lock;
+};
+
+private function PoissonDiskData.initializePoints!(UInt32 numPexThreads, io UInt32 seed)
+{
+	// Create the first points for each distributor to start with.
+
+	const UInt32 NUM_ITERATIONS_PER_THREAD = 5;
+
+	Float32 radius = Float32(sqrt(DIMENSION));
+	UInt32 maxNumTries = numPexThreads * NUM_ITERATIONS_PER_THREAD;
+
+	XOrShift randGen(seed);
+	Point bBoxMin;
+	Point bBoxMax;
+	this.region.getBoundingBox(bBoxMin, bBoxMax);
+
+	for(UInt32 i = 0; i < maxNumTries; ++i)
+	{
+		// [2d/3d]
+		//Float32 x = randGen.generate(bBoxMin.x, bBoxMax.x);
+		//Float32 y = randGen.generate(bBoxMin.y, bBoxMax.y);
+		//Float32 z = randGen.generate(bBoxMin.z, bBoxMax.z);
+		//Point point(x, y, z);
+		Float32 x = randGen.generate(bBoxMin.x, bBoxMax.x);
+		Float32 y = randGen.generate(bBoxMin.y, bBoxMax.y);
+		Point point(x, y);
+
+		if(this.region.isInside(point))
+		{
+			UInt32 j;
+			for(j = 1; j < this.numPoints + 1; ++j)
+			{
+				if((point - this.points[j]).lengthSquared() < radius * radius)
+				{
+					break;
+				}
+			}
+
+			if(j == this.numPoints + 1)
+			{
+				++this.numPoints;
+				this.points[this.numPoints] = point;
+				this.grid.setCellValue(this.grid.getCellCoord(point), this.numPoints);
+			}
+
+			if(this.numPoints == numPexThreads)
+			{
+				return;
+			}
+		}
+	}
+}
+
+function PoissonDiskData(UInt32 numPexThreads, io Point points[], IRegion region, io UInt32 seed)
+{
+	this.lock = SimpleLock();
+	this.points = points;
+	this.region = region;
+
+	// Initialize grid.
+	Point bBoxMin;
+	Point bBoxMax;
+	this.region.getBoundingBox(bBoxMin, bBoxMax);
+
+	Float32 EPS = 1.0E-5;
+
+	// [2d/3d]
+	//GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2, bBoxMax.y - bBoxMin.y + EPS * 2, bBoxMax.z - bBoxMin.z + EPS * 2);
+	//Point origin = bBoxMin - Vec3(EPS, EPS, EPS);
+	GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2 + 1, bBoxMax.y - bBoxMin.y + EPS * 2 + 1);
+	Point origin = bBoxMin - Vec2(EPS, EPS);
+
+	this.grid = SimpleGrid(gridSize, origin);	
+
+	this.initializePoints(numPexThreads, seed);
+}
+
+// ===============================================
+/// Bridson's Poisson disk implementation.
+object PoissonDiskDistributor
+{
+	private PoissonDiskData pData;
+
+	/// Per thread active list.
 	private ActiveList activeList;
 	/// Per thread random generator.
 	private XOrShift randGen;
 };
 
-function CreatePointsWorker(io UInt32 seed, Point points[], IRegion region, IGrid grid, SimpleLock lock, Counter counter)
+function PoissonDiskDistributor(io UInt32 seed, PoissonDiskData pData)
 {
-	this.points = points;
-	this.region = region;
-	this.grid = grid;
-	this.lock = lock;
+	this.pData = pData;
 	this.activeList = ActiveList(seed);
 	this.randGen = XOrShift(seed);
-	this.counter = counter;	
 }
 
-function CreatePointsWorker.run!(Point startPoint)
+function PoissonDiskDistributor.run!(Point startPoint)
 {
 	const UInt32 NUM_ITERATIONS = 30;
 
@@ -122,7 +197,7 @@ function CreatePointsWorker.run!(Point startPoint)
 	// NOTE: because it makes debugging and maintenance more difficult.
 
 	Float32 radius = Float32(sqrt(DIMENSION));
-	GridNeighborFinder gnFinder(this.points, this.grid);
+	GridNeighborFinder gnFinder(this.pData.points, this.pData.grid);
 
 	this.activeList.push(startPoint);
 
@@ -136,12 +211,12 @@ function CreatePointsWorker.run!(Point startPoint)
 		{
 			Point searchPoint = currentPoint + this.uniformAnnulusDistribute(radius);
 
-			if( ! this.region.isInside(searchPoint))
+			if( ! this.pData.region.isInside(searchPoint))
 			{
 				continue;
 			}
 
-			CellCoord cellCoord = this.grid.getCellCoord(searchPoint);
+			CellCoord cellCoord = this.pData.grid.getCellCoord(searchPoint);
 
 			if( ! gnFinder.isNeighborExists(searchPoint, radius, false))
 			{
@@ -150,15 +225,15 @@ function CreatePointsWorker.run!(Point startPoint)
 				// A lock is used to ensure only one point is created in a single cell,
 				// also for array push() which is not thread-safe.
 				{
-					AutoLock(this.lock);
+					AutoLock(this.pData.lock);
 					// Check if no point has been/is being created by another thread.
-					if( ! this.grid.getCellValue(cellCoord))
+					if( ! this.pData.grid.getCellValue(cellCoord))
 					{
 						// We can create a point!
-						this.counter.count.atomicInc();
-						this.points[this.counter.count] = searchPoint;
-						index = this.points.size() - 1;
-						this.grid.setCellValue(cellCoord, index);
+						this.pData.numPoints.atomicInc();
+						this.pData.points[this.pData.numPoints] = searchPoint;
+						index = this.pData.points.size() - 1;
+						this.pData.grid.setCellValue(cellCoord, index);
 					}
 				}
 
@@ -181,7 +256,7 @@ function CreatePointsWorker.run!(Point startPoint)
 	}
 }
 
-private function Point CreatePointsWorker.uniformAnnulusDistribute!(Float32 radius)
+private function Point PoissonDiskDistributor.uniformAnnulusDistribute!(Float32 radius)
 {
 	// [2d/3d]
 	Float32 rnd1 = this.randGen.generate01();
@@ -197,136 +272,34 @@ private function Point CreatePointsWorker.uniformAnnulusDistribute!(Float32 radi
 }
 
 // ===============================================
-/// Bridson's Poisson disk implementation.
-object PoissonDiskDistributor
+operator distributePoints<<<index>>>(io PoissonDiskData pData, io PoissonDiskDistributor workers[])
 {
-	/// Shared result points list. For implementation reason points[0] is not used.
-	Point points[];
-	/// Shared grid used to distribute points.
-	IGrid grid;
-	/// Shared region to define where to create points.
-	private IRegion region;
-	/// Shared thread lock.
-	private SimpleLock lock;
-
-	CreatePointsWorker workers[];
-	Counter counter;
-};
-
-private function PoissonDiskDistributor.initializePoints!(UInt32 numPexThreads, io UInt32 seed)
-{
-	const UInt32 NUM_ITERATIONS_PER_THREAD = 5;
-
-	Float32 radius = Float32(sqrt(DIMENSION));
-	UInt32 maxNumTries = numPexThreads * NUM_ITERATIONS_PER_THREAD;
-
-	XOrShift randGen(seed);
-	Point bBoxMin;
-	Point bBoxMax;
-	this.region.getBoundingBox(bBoxMin, bBoxMax);
-
-	for(UInt32 i = 0; i < maxNumTries; ++i)
-	{
-		// [2d/3d]
-		//Float32 x = randGen.generate(bBoxMin.x, bBoxMax.x);
-		//Float32 y = randGen.generate(bBoxMin.y, bBoxMax.y);
-		//Float32 z = randGen.generate(bBoxMin.z, bBoxMax.z);
-		//Point point(x, y, z);
-		Float32 x = randGen.generate(bBoxMin.x, bBoxMax.x);
-		Float32 y = randGen.generate(bBoxMin.y, bBoxMax.y);
-		Point point(x, y);
-
-		UInt32 pointsListSize = this.points.size();
-		if(this.region.isInside(point))
-		{
-			UInt32 j;
-			for(j = 1; j < pointsListSize; ++j)
-			{
-				if((point - this.points[j]).lengthSquared() < radius * radius)
-				{
-					break;
-				}
-			}
-
-			if(j == pointsListSize)
-			{
-				++this.counter.count;
-				this.points[this.counter.count] = point;
-				this.grid.setCellValue(this.grid.getCellCoord(point), this.points.size() - 1);
-			}
-
-			if(this.counter.count == numPexThreads)
-			{
-				return;
-			}
-		}
-	}
-}
-
-function PoissonDiskDistributor(UInt32 numPexThreads, IRegion region, io Point points[], Counter counter)
-{
-	this.points = points;
-	this.region = region;
-	this.lock = SimpleLock();
-	this.counter = counter;
-
-	// Initialize grid.
-	Point bBoxMin;
-	Point bBoxMax;
-	this.region.getBoundingBox(bBoxMin, bBoxMax);
-
-	Float32 EPS = 1.0E-5;
-
-	// [2d/3d]
-	//GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2, bBoxMax.y - bBoxMin.y + EPS * 2, bBoxMax.z - bBoxMin.z + EPS * 2);
-	//Point origin = bBoxMin - Vec3(EPS, EPS, EPS);
-	GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2 + 1, bBoxMax.y - bBoxMin.y + EPS * 2 + 1);
-	Point origin = bBoxMin - Vec2(EPS, EPS);
-
-	this.grid = SimpleGrid(gridSize, origin);
-
-	// Initialize workers.
-	UInt32 seed = 0;
-	for(UInt32 i = 0; i < numPexThreads; ++i)
-	{
-		CreatePointsWorker worker(seed, this.points, this.region, this.grid, this.lock, this.counter);
-		this.workers.push(worker);
-	}
-
-	// Create the first points for each thread to start with.
-	this.initializePoints(numPexThreads, seed);
-}
-
-// ===============================================
-operator distributePoints<<<index>>>(io PoissonDiskDistributor distributor)
-{
-	Point startPoint = distributor.points[index + 1];
-	distributor.workers[index].run(startPoint);
+	Point startPoint = pData.points[index + 1];
+	workers[index].run(startPoint);
 }
 
 // ===============================================
 /// Find wrong points and stores the indices to wrongPointIndices[].
-operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], Point points[], IGrid grid, UInt32 numPexThreads, SimpleLock lock, UInt32 count)
+operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], PoissonDiskData pData, UInt32 numPexThreads)
 {
 	Float32 radius = Float32(sqrt(DIMENSION));
-	UInt32 realSize = count - 1;
-	GridNeighborFinder gnFinder(points, grid);
+	GridNeighborFinder gnFinder(pData.points, pData.grid);
 
 	UInt32 startIndex;
 	UInt32 endIndex;
 
-	if(realSize < numPexThreads)
+	if(pData.numPoints < numPexThreads)
 	{
 		startIndex = 1;
-		endIndex = (index == 0)? count : 0;
+		endIndex = (index == 0)? pData.numPoints + 1 : 0;
 	}
 	else
 	{
-		UInt32 mod = realSize % numPexThreads;
-		UInt32 load = (realSize - mod) / numPexThreads;
+		UInt32 mod = pData.numPoints % numPexThreads;
+		UInt32 load = (pData.numPoints - mod) / numPexThreads;
 
-		UInt32 startIndex = load * index + 1;
-		UInt32 endIndex = startIndex + load + 1;
+		startIndex = load * index + 1;
+		endIndex = startIndex + load + 1;
 		if(index == numPexThreads - 1)
 		{
 			endIndex += mod;
@@ -335,11 +308,29 @@ operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], Point points[
 
 	for(Index i = startIndex; i < endIndex; ++i)
 	{
-		Point point = points[i];
+		Point point = pData.points[i];
 		if(gnFinder.isNeighborExists(point, radius, true))
 		{
-			AutoLock(lock);
+			AutoLock(pData.lock);
 			wrongPointIndices.push(index + 1);
 		}
+	}
+}
+
+function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
+{
+	// Truncate pData.points. Does pData.resize() enough?
+	Point newPoints[];
+	newPoints.resize(pData.numPoints);
+	for(UInt32 i = 0; i < pData.numPoints; ++i)
+	{
+		newPoints[i] = pData.points[i];
+	}
+	swap(newPoints, pData.points);
+
+	for(UInt32 i = 0; i < wrongPointIndices.size(); ++i)
+	{
+		pData.points.swap(i, pData.points.size() - 1);
+		pData.points.pop();
 	}
 }
