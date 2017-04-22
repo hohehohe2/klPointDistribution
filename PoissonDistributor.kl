@@ -38,13 +38,18 @@ function CreatePointsWorker.run!(Point startPoint)
 	const UInt32 NUM_ITERATIONS = 30;
 
 	// Running this function in parallel can create wrong points,
-	// ie. points within the radius.
+	// ie. a point that has neighbor points within the radius.
 	// We first ignore them and remove those points later.
 
 	// We chose the grid cell edge length to be the unit of length, ie. 1.0 for efficiency.
 	// The disk radius must be sqrt(2.0) and sqrt(3.0) in 2d and 3d cases
 	// respectively (See Bridson's paper for more details).
 	// Every value which has length unit must be scaled accordingly in advance.
+
+	// NOTE: This is for efficiency (and making the program easier as a hidden purpose).
+	// NOTE: I wouldn't do that in a real programming unless critical speed is required
+	// NOTE: because it makes debugging and maintenance more difficult.
+
 	Float32 radius = Float32(sqrt(DIMENSION));
 
 	GridSize gridSize = this.grid.getGridSize();
@@ -250,7 +255,6 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
 	}
 
 	this.initializePoints(numThreads, seed);
-
 }
 
 // ===============================================

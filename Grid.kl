@@ -23,10 +23,6 @@ interface IGrid
 
 // ===============================================
 /// Simple packed rectangular grid that implements IGrid.
-// Length unit is normalized to the cell edge length, ie. cell edge length is always 1.0.
-// NOTE: This normalization is to reduce calculation cost (and making the program easier as a hidden purpose)
-// but I wouldn't do that in the real programming unless critical speed is required because it
-// makes debugging and maintenance more difficult.
 object SimpleGrid : IGrid
 {
 	private UInt32 cells[];
