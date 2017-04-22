@@ -6,7 +6,8 @@ operator entry() {
 	Point points[];
 	points.resize(65536);
 
-	UInt32 numPexThreads = getThreadCount();
+	//UInt32 numPexThreads = getThreadCount();
+	UInt32 numPexThreads = 1;
 	PoissonDiskDistributor distributor(numPexThreads, region, points, counter);
 	
 	numPexThreads = Math_min(numPexThreads, counter.count);
@@ -27,7 +28,7 @@ operator entry() {
 	{
 		Float32 x = points[i].x;
 		Float32 y = points[i].y;
-		report("p.append((" + x + ", " + y + "))");
+		//report("p.append((" + x + ", " + y + "))");
 	}
 	report(counter.count - 1);
 }
