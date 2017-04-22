@@ -247,11 +247,13 @@ private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io 
 	}
 }
 
-function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
+function PoissonDiskDistributor(UInt32 numThreads, IRegion region, io Point points[])
 {
-	this.points.resize(1); // Add dummy.
+	this.points = points;
 	this.region = region;
 	this.lock = SimpleLock();
+
+	points.resize(1); // Add dummy.
 
 	// Initialize grid.
 	Point bBoxMin;
@@ -282,7 +284,7 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region)
 }
 
 // ===============================================
-operator distributePoints<<<index>>>(io Ref<PoissonDiskDistributor> distributor)
+operator distributePoints<<<index>>>(io PoissonDiskDistributor distributor)
 {
 	Point startPoint = distributor.points[index + 1];
 	distributor.workers[index].run(startPoint);
@@ -300,19 +302,15 @@ operator distributePoints<<<index>>>(io Ref<PoissonDiskDistributor> distributor)
 // 	}
 // }
 
-// ===============================================
-function PoissonDiskDistributor.run!()
-{
-	UInt32 numThreads = Math_min(getThreadCount(), this.points.size() - 1);
-	distributePoints<<<numThreads>>>(this);
-}
-
 operator entry() {
 	UInt32 numThreads = getThreadCount();
 	SimpleRectRegion region(Point(0.0, 0.0), Point(10.0, 10.0));
-	PoissonDiskDistributor distributor(numThreads, region);
+	Point points[];
 
-	distributor.run();
+	PoissonDiskDistributor distributor(numThreads, region, points);
+
+	numThreads = Math_min(getThreadCount(), points.size() - 1);
+	distributePoints<<<numThreads>>>(distributor);
 
 	// Display result.
 	Point bBoxMin, bBoxMax;
