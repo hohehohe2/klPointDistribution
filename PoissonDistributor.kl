@@ -22,7 +22,7 @@ function GridNeighborFinder(Point points[], IGrid grid)
 }
 
 /// Returns true if neighbor is found.
-function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 radius)
+function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 radius, Boolean isExcludeSelfCell)
 {
 	CellCoord cellCoord = this.grid.getCellCoord(searchPoint);
 
@@ -30,6 +30,15 @@ function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 
 	UInt32 numNeighbors = 25; // [2d/3d] 125 if 3d
 	for(UInt32 j = 0; j < numNeighbors; ++j)
 	{
+		if(isExcludeSelfCell)
+		{
+			// [2d/3d]
+			//if(j == 62)
+			if(j == 12)
+			{
+				continue;
+			}
+		}
 		// [2d/3d]
 		//UInt32 k = j / 25 - 2;
 		//UInt32 l = (j % 25) / 5 - 2;
@@ -129,7 +138,7 @@ function CreatePointsWorker.run!(Point startPoint)
 
 			CellCoord cellCoord = this.grid.getCellCoord(searchPoint);
 
-			if( ! gnFinder.isNeighborExists(searchPoint, radius))
+			if( ! gnFinder.isNeighborExists(searchPoint, radius, false))
 			{
 				Index index = UInt32Max;
 
@@ -140,7 +149,7 @@ function CreatePointsWorker.run!(Point startPoint)
 					// Check if no point has been/is being created by another thread.
 					if( ! this.grid.getCellValue(cellCoord))
 					{
-						// We can create point!
+						// We can create a point!
 						this.points.push(searchPoint);
 						index = this.points.size() - 1;
 						this.grid.setCellValue(cellCoord, index);
@@ -190,20 +199,20 @@ object PoissonDiskDistributor
 {
 	/// Shared result points list. For implementation reason points[0] is not used.
 	Point points[];
+	/// Shared grid used to distribute points.
+	IGrid grid;
 	/// Shared region to define where to create points.
 	private IRegion region;
-	/// Shared grid used to distribute points.
-	private IGrid grid;	
 	/// Shared thread lock.
 	private SimpleLock lock;
 
 	CreatePointsWorker workers[];
 };
 
-private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io UInt32 seed)
+private function PoissonDiskDistributor.initializePoints!(UInt32 numPexThreads, io UInt32 seed)
 {
 	Float32 radius = Float32(sqrt(DIMENSION));
-	UInt32 maxNumTries = numThreads * 5;
+	UInt32 maxNumTries = numPexThreads * 5;
 
 	XOrShift randGen(seed);
 	Point bBoxMin;
@@ -239,7 +248,7 @@ private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io 
 				this.grid.setCellValue(this.grid.getCellCoord(point), this.points.size() - 1);
 			}
 
-			if(this.points.size() == numThreads + 1)
+			if(this.points.size() == numPexThreads + 1)
 			{
 				return;
 			}
@@ -247,7 +256,7 @@ private function PoissonDiskDistributor.initializePoints!(UInt32 numThreads, io 
 	}
 }
 
-function PoissonDiskDistributor(UInt32 numThreads, IRegion region, io Point points[])
+function PoissonDiskDistributor(UInt32 numPexThreads, IRegion region, io Point points[])
 {
 	this.points = points;
 	this.region = region;
@@ -265,14 +274,14 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region, io Point poin
 	// [2d/3d]
 	//GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2, bBoxMax.y - bBoxMin.y + EPS * 2, bBoxMax.z - bBoxMin.z + EPS * 2);
 	//Point origin = bBoxMin - Vec3(EPS, EPS, EPS);
-	GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2, bBoxMax.y - bBoxMin.y + EPS * 2);
+	GridSize gridSize(bBoxMax.x - bBoxMin.x + EPS * 2 + 1, bBoxMax.y - bBoxMin.y + EPS * 2 + 1);
 	Point origin = bBoxMin - Vec2(EPS, EPS);
 
 	this.grid = SimpleGrid(gridSize, origin);
 
 	// Initialize workers.
 	UInt32 seed = 0;
-	for(UInt32 i = 0; i < numThreads; ++i)
+	for(UInt32 i = 0; i < numPexThreads; ++i)
 	{
 		CreatePointsWorker worker();
 		worker.initialize(seed, this.points, this.region, this.grid, this.lock);
@@ -280,7 +289,7 @@ function PoissonDiskDistributor(UInt32 numThreads, IRegion region, io Point poin
 	}
 
 	// Create the first points for each thread to start with.
-	this.initializePoints(numThreads, seed);
+	this.initializePoints(numPexThreads, seed);
 }
 
 // ===============================================
@@ -290,38 +299,76 @@ operator distributePoints<<<index>>>(io PoissonDiskDistributor distributor)
 	distributor.workers[index].run(startPoint);
 }
 
-// // ===============================================
-// /// Find wrong points, do not delete from the points.
-// operator findWrongPoints<<<index>>>(Point points[], IRegion region, IGrid grid, Index startIndex, Index endIndex)
-// {
-// 	for(Index i = startIndex; i < endIndex; ++i)
-// 	{
-// 		Point point = points[i];
-// 		CellCoord coord = grid.getCellCoord(point);
-// 		UInt32 cellValue = grid.getCellValue(coord);
-// 	}
-// }
+// ===============================================
+/// Find wrong points, do not delete from the points.
+operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], Point points[], IGrid grid, UInt32 numPexThreads, SimpleLock lock)
+{
+	Float32 radius = Float32(sqrt(DIMENSION));
+	UInt32 realSize = points.size() - 1;
+	GridNeighborFinder gnFinder(points, grid);
+
+	if(realSize < numPexThreads)
+	{
+		if(index < realSize)
+		{
+			if(gnFinder.isNeighborExists(points[index + 1], radius, true))
+			{
+				AutoLock(lock);
+				wrongPointIndices.push(index + 1);
+			}
+		}
+
+		return;
+	}
+
+	UInt32 mod = realSize % numPexThreads;
+	UInt32 load = (realSize - mod) / numPexThreads;
+
+	UInt32 startIndex = load * index + 1;
+	UInt32 endIndex = startIndex + load + 1;
+	if(index == numPexThreads - 1)
+	{
+		endIndex += mod;
+	}
+
+	for(Index i = startIndex; i < endIndex; ++i)
+	{
+		Point point = points[i];
+		if(gnFinder.isNeighborExists(point, radius, true))
+		{
+			AutoLock(lock);
+			wrongPointIndices.push(index + 1);
+		}
+	}
+}
 
 operator entry() {
-	UInt32 numThreads = getThreadCount();
-	SimpleRectRegion region(Point(0.0, 0.0), Point(10.0, 10.0));
+	SimpleRectRegion region(Point(-20.6, -30.4), Point(50.0, 10.0));
 	Point points[];
 
-	PoissonDiskDistributor distributor(numThreads, region, points);
+	UInt32 numPexThreads = getThreadCount();
+	PoissonDiskDistributor distributor(numPexThreads, region, points);
 
-	numThreads = Math_min(getThreadCount(), points.size() - 1);
-	distributePoints<<<numThreads>>>(distributor);
+	numPexThreads = Math_min(numPexThreads, points.size() - 1);
+	distributePoints<<<numPexThreads>>>(distributor);
+
+	// UInt32 wrongPointIndices[];
+	// SimpleLock lock();
+	// findWrongPoints<<<numPexThreads>>>(wrongPointIndices, points, distributor.grid, numPexThreads, lock);
+
+	// report("wrong " + wrongPointIndices.size());
 
 	// Display result.
 	Point bBoxMin, bBoxMax;
 	region.getBoundingBox(bBoxMin, bBoxMax);
 	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
 	report("p = []");
-	for(UInt32 i = 1; i < distributor.points.size(); ++i)
+	for(UInt32 i = 1; i < points.size(); ++i)
 	{
-		Float32 x = distributor.points[i].x;
-		Float32 y = distributor.points[i].y;
-		report("p.append((" + x + ", " + y + "))");
+		Float32 x = points[i].x;
+		Float32 y = points[i].y;
+		//report("p.append((" + x + ", " + y + "))");
 	}
+	report(points.size() - 1);
 }
 
