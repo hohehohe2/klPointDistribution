@@ -225,6 +225,13 @@ function PoissonDiskDistributor.run!(Point startPoint)
 				// also for array push() which is not thread-safe.
 				{
 					AutoLock(this.pData.lock);
+
+					if(this.pData.numPoints >= this.pData.points.size())
+					{
+						report("Cannot add points to the points array anymore");
+						return;
+					}
+
 					// Make sure no point has been created by another thread.
 					if(this.pData.grid.getCellValue(cellCoord) == UInt32Max)
 					{
@@ -271,7 +278,7 @@ private function Point PoissonDiskDistributor.uniformAnnulusDistribute!(Float32 
 }
 
 // ===============================================
-operator distributePoints<<<index>>>(io PoissonDiskData pData, io PoissonDiskDistributor workers[])
+operator poissonDiskDistributePoints<<<index>>>(io PoissonDiskData pData, io PoissonDiskDistributor workers[])
 {
 	Point startPoint = pData.points[index];
 	workers[index].run(startPoint);

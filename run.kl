@@ -22,7 +22,7 @@ operator entry() {
 	{
 		distributors.push(PoissonDiskDistributor(seed, pData));
 	}
-	distributePoints<<<numPexThreads>>>(pData, distributors);
+	poissonDiskDistributePoints<<<numPexThreads>>>(pData, distributors);
 
 	// Assumed resize doesn't change [0..numPoints) data.
 	points.resize(pData.numPoints);
