@@ -10,10 +10,12 @@ operator entry() {
 	points.resize(65536);
 
 	// Distribute.
-
+	// Since threads do not stop until they cover every region with points,
+	// It is meaningless to run more than getThreadCount() number of pex threads.
 	UInt32 seed = 0;
 	UInt32 numPexThreads = getThreadCount();
 	//UInt32 numPexThreads = 1;
+
 	PoissonDiskData pData(numPexThreads, points, region, seed);
 	numPexThreads = Math_min(numPexThreads, pData.numPoints);
 

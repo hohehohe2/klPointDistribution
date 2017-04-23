@@ -54,6 +54,20 @@ function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 
 		// We could do some more early out check here by looking at the intersection
 		// of the cell and the circle/sphere search area.
 
+		// NOTE: A cell value contains an array index where the point coordinate is
+		// NOTE: When a thread creates a point, it
+		// NOTE: 	a) Stores the point coordinate to the points[] array.
+		// NOTE: 	b) Updates the cell value the point is in to tell every thread the existence of the point
+		// NOTE:       and access the right index in the points[] array.
+		// NOTE: so for the other thread to work properly the order of b) cannot be visible before a) in other threads.
+		// NOTE: In C++ it can be done with std::atomic. Fabric Engine KL has some sopport functions,
+		// NOTE: atomicMemoryBarrier() family but I couldn't find std::atomic::store(), std::atomic::load()
+		// NOTE: equivalent.
+		// NOTE: I tried to lower the risk of b) getting visible before a) by pre-allocating points[] array
+		// NOTE: which is making the situation better but still not safe.
+		// NOTE: Other synchronization functions that I haven't used will do this but it'll be very slow,
+		// NOTE: and Bridson's poisson disk is not suitable for parallel processing anyway.
+
 		UInt32 cellValue = this.grid.getCellValue(crd);
 		if(cellValue != UInt32Max) // If point exists
 		{
@@ -295,6 +309,7 @@ operator findWrongPoints<<<index>>>(io UInt32 wrongPointIndices[], PoissonDiskDa
 	wrongPointIndices[index] = gnFinder.isNeighborExists(point, radius, true);
 }
 
+// ===============================================
 function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
 {
 	Float32 radius = Float32(sqrt(DIMENSION));

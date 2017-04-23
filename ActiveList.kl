@@ -12,14 +12,14 @@ function ActiveList(io UInt32 seed)
 	this.randGen = XOrShift(seed);
 }
 
-function ActiveList.push!(Point position)
+inline function ActiveList.push!(Point position)
 {
 	this.list.push(position);
 }
 
 /// Get a point randomly from the active list and set the list's index to the argumenet index.
 /// If the list size is 0, it sets UInt32Max to index. 
-function Point ActiveList.getRandom!(out Index index)
+inline function Point ActiveList.getRandom!(out Index index)
 {
 	if(this.list.size() == 0)
 	{
@@ -30,7 +30,7 @@ function Point ActiveList.getRandom!(out Index index)
 	return this.list[index];
 }
 
-function ActiveList.removeElement!(Index index)
+inline function ActiveList.removeElement!(Index index)
 {
 	this.list.swap(index, this.list.size() - 1);
 	this.list.pop();
