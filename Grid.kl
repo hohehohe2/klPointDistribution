@@ -9,8 +9,6 @@ alias Vec3_i GridSize;
 /// Grid interface.
 interface IGrid
 {
-	/// Get the grid size.
-	GridSize getGridSize();
 	/// Get the coordinate of the cell that contains pos.
 	CellCoord getCellCoord(Point pos);
 	/// Returns true if there's a cell allocated in the given coordinate exists.
@@ -41,11 +39,6 @@ function SimpleGrid(GridSize gridSize, Point origin)
 	{
 		this.cells[i] = UInt32Max;
 	}
-}
-
-function GridSize SimpleGrid.getGridSize()
-{
-	return this.gridSize;	
 }
 
 inline private function Index SimpleGrid.cellToIndex(CellCoord coord)
