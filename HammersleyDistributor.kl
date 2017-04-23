@@ -1,0 +1,15 @@
+require Math;
+
+// ===============================================
+operator hammersleyDistributePoints<<<index>>>(io Vec2 points[], UInt32 numPoints)
+{
+	UInt32 iy = index;
+	iy = (iy & 0x55555555) <<  1 | (iy & 0xAAAAAAAA)  >>  1;
+	iy = (iy & 0x33333333) <<  2 | (iy & 0xCCCCCCCC)  >>  2;
+	iy = (iy & 0x0F0F0F0F) <<  4 | (iy & 0xF0F0F0F0)  >>  4;
+	iy = (iy & 0x00FF00FF) <<  8 | (iy & 0xFF00FF00)  >>  8;
+	iy = (iy             ) << 16 | (iy             )  >> 16;
+	Float32 fy = Float32(iy) * 2.3283064365386963e-10;
+	Float32 fx = Float32(index) / numPoints;
+	points[index] = Vec2(fx, fy);
+}

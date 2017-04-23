@@ -1,0 +1,13 @@
+require PointDistribute;
+
+operator entry()
+{
+	UInt32 numPoints = 10;
+	Point points[];
+	points.resize(numPoints);
+	hammersleyDistributePoints<<<numPoints>>>(points, numPoints);
+	for(UInt32 i = 0; i < numPoints; ++i)
+	{
+		report(points[i]);
+	}
+}
