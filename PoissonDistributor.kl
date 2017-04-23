@@ -293,15 +293,7 @@ function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
 	Float32 radius = Float32(sqrt(DIMENSION));
 	GridNeighborFinder gnFinder(pData.points, pData.grid);
 
-	// Can we just use pData.resize() ?
-	Point newPoints[];
-	newPoints.resize(pData.numPoints);
-	for(UInt32 i = 0; i < pData.numPoints; ++i)
-	{
-		newPoints[i] = pData.points[i];
-	}
-	swap(newPoints, pData.points);
-
+	UInt32 numFound = 0;
 	for(UInt32 i = 0; i < pData.numPoints; ++i)
 	{
 		if( ! wrongPointIndices[i])
@@ -314,6 +306,9 @@ function removeWrongPoints(io PoissonDiskData pData, UInt32 wrongPointIndices[])
 		{
 			pData.points.swap(i, pData.points.size() - 1);
 			pData.points.pop();
+			++numFound;
 		}
 	}
+
+	pData.numPoints -= numFound;
 }

@@ -3,7 +3,7 @@ require PointDistribute;
 operator entry() {
 
 	// Region to sprinkle points.
-	SimpleRectRegion region(Point(-10.6, -10.4), Point(10.0, 10.0));
+	SimpleRectRegion region(Point(0.0, 0.0), Point(10.0, 10.0));
 
 	// Result array.
 	Point points[];
@@ -23,6 +23,9 @@ operator entry() {
 		distributors.push(PoissonDiskDistributor(seed, pData));
 	}
 	distributePoints<<<numPexThreads>>>(pData, distributors);
+
+	// Assumed resize doesn't change [0..numPoints) data.
+	points.resize(pData.numPoints);
 
 	report("# points: " + pData.numPoints);
 
@@ -47,6 +50,6 @@ operator entry() {
 		Float32 y = points[i].y;
 		report("p.append((" + x + ", " + y + "))");
 	}
-	//report(pData.numPoints - 1);
+	report(pData.numPoints);
 }
 
