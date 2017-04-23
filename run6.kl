@@ -1,0 +1,49 @@
+require Geometry;
+require FileIO;
+require AlembicWrapper;
+
+function Boolean readFabricFrog(io PolygonMesh mesh)
+{
+	FilePath filePath("${FABRIC_DIR}/Resources/frog.abc");
+	filePath = filePath.expandEnvVars();
+	String filePathStr = filePath.string();
+	AlembicArchiveReader aaReader(filePathStr);
+	String allPaths[];
+	allPaths = aaReader.getAllPaths();
+	String path;
+	for(UInt32 i = 0; i < allPaths.size(); ++i)
+	{
+		if(aaReader.getObjectType(allPaths[i]) == "PolyMesh")
+		{
+			path = allPaths[i];
+			break;
+		}
+	}
+	if( path == "" )
+	{
+		report("No mesh found");
+		return PolygonMesh();
+	}
+
+	AlembicPolyMeshReader reader = aaReader.getPolyMesh(path);
+	reader.readSample(0.0, true, mesh);
+
+	return mesh;
+}
+
+operator entry() {
+	PolygonMesh mesh();
+	if( ! readFabricFrog(mesh))
+	{
+		return;
+	}
+	mesh.prepareForSpatialQueries(65536, null);
+
+	GeometryLocation location = mesh.getClosest(Vec3(0, 0, 0), Vec3(1, 1, 1), SCALAR_INFINITE);
+	if( ! location.isValid())
+	{
+		return;
+	}
+
+	report(mesh.getPositionAtLocation(location));
+}

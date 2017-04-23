@@ -1,0 +1,78 @@
+require FabricSynchronization;
+
+object RWLock
+{
+	private UInt32 r;
+	private UInt32 g;
+	private UInt32 b;
+};
+
+private function RWLock.lockRG!(Boolean isR)
+{
+	ActiveWaitLoopControl waitControl();
+
+	while(true)
+	{
+		if(isR)
+		{
+			if( ! this.r.atomicCAS(0, 1))
+			{
+				break;
+			}
+		}
+		else
+		{
+			if( ! this.g.atomicCAS(0, 1))
+			{
+				break;
+			}
+		}
+	    waitControl.wait();
+	}
+}
+
+private function RWLock.unLockRG!(Boolean isR)
+{
+	if(isR)
+	{
+		this.r.atomicCAS(1, 0);
+	}
+	else
+	{
+		this.g.atomicCAS(1, 0);
+	}
+}
+
+function RWLock.acquireRead!()
+{
+	this.lockRG(true);
+	++this.b;
+	if(this.b == 1)
+	{
+		this.lockRG(false);
+	}
+	this.unLockRG(true);
+	atomicMemoryBarrier_Acquire();
+}
+
+function RWLock.releaseRead!()
+{
+	this.lockRG(true);
+	--this.b;
+	if(this.b == 0)
+	{
+		this.unLockRG(false);
+	}
+	this.unLockRG(true);
+}
+
+function RWLock.acquireWrite!()
+{
+	this.lockRG(false);
+}
+
+function RWLock.releaseWrite!()
+{
+	this.unLockRG(false);
+	atomicMemoryBarrier_Release();
+}

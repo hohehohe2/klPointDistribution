@@ -1,0 +1,50 @@
+require Geometry;
+
+operator entry() {
+  report("********************* testPoints ***************************");
+
+  SparseGridStruct SG;
+  SG.updatePointObject(99, Vec3(1,0,1));
+  SG.updatePointObject(1, Vec3(1,0,2));
+  SG.updatePointObject(2, Vec3(1,0,3));
+  SG.updatePointObject(3, Vec3(1,0,4));
+  SG.updateGrid();
+  SG.report(true);
+
+  IndexSet IS;
+  SG.bSphereQuery( Vec3(1,0,2), 0.5, IS );
+  report("Query1: "+IS.indices);
+
+  IS.free();
+  SG.bSphereQuery( Vec3(2,0,2), 1.25, IS );
+  report("Query2: "+IS.indices);
+
+  IS.free();
+  SG.bSphereQuery( Vec3(2,0,2), 1.75, IS );
+  report("Query3: "+IS.indices);
+
+  IS.free();
+  SG.bSphereQuery( Vec3(2,0,2), 5.0, IS );
+  report("Query4: "+IS.indices);
+
+  //Set in same cell: will force a recompact
+  SG.updatePointObject(99, Vec3(1,0,3.01));
+  SG.updatePointObject(1, Vec3(1,0,3.02));
+  SG.updatePointObject(3, Vec3(1,0,3.03));
+  SG.updateGrid();
+  SG.report(true);
+
+  IS.free();
+  SG.bSphereQuery( Vec3(1,0,3), 0.5, IS );
+  report("Query5: "+IS.indices);
+
+  //Spread: will cause a rehash
+  SG.updatePointObject(0, Vec3(1,0,-10));
+  SG.updatePointObject(1, Vec3(1,0,10));
+  SG.updateGrid();
+  SG.report(true);
+
+  IS.free();
+  SG.bSphereQuery( Vec3(1,0,-20), 15, IS );
+  report("Query6: "+IS.indices);
+}

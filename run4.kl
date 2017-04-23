@@ -1,0 +1,45 @@
+require PointDistribute;
+
+function someHeavyFunc()
+{
+	UInt32 numPoints = 50;
+	Point points[];
+	points.resize(numPoints);
+	hammersleyDistributePoints<<<numPoints>>>(points, numPoints);
+}
+
+operator parallelReads<<<index>>>(io RWLock lock)
+{
+	lock.acquireRead();
+	report(index + " " + getThreadIndex() + " start");
+	someHeavyFunc();
+	report(index + " " + getThreadIndex() + "end");
+	lock.releaseRead();
+}
+
+operator parallelReadWrite<<<index>>>(io RWLock lock)
+{
+	if(index)
+	{
+		lock.acquireRead();
+		report(index + " " + getThreadIndex() + " start");
+		someHeavyFunc();
+		report(index + " " + getThreadIndex() + "end");
+		lock.releaseRead();
+	}
+	else
+	{
+		lock.acquireWrite();
+		report(index + " " + getThreadIndex() + " start");
+		someHeavyFunc();
+		report(index + " " + getThreadIndex() + "end");
+		lock.releaseWrite();
+	}
+}
+
+operator entry()
+{
+	RWLock lock();
+	parallelReads<<<2>>>(lock);
+}
+
