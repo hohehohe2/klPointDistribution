@@ -10,8 +10,6 @@ operator entry() {
 	points.resize(65536);
 
 	// Distribute.
-	// Since threads do not stop until they cover every region with points,
-	// It is meaningless to run more than getThreadCount() number of pex threads.
 	UInt32 seed = 0;
 	UInt32 numPexThreads = getThreadCount();
 	//UInt32 numPexThreads = 1;
@@ -35,23 +33,23 @@ operator entry() {
 
 	UInt32 wrongPointIndices[];
 	wrongPointIndices.resize(pData.numPoints);
-	SimpleLock lock();
 	findWrongPoints<<<pData.numPoints>>>(wrongPointIndices, pData);
 
 	// Remove them in single thread.
 	removeWrongPoints(pData, wrongPointIndices);
 
+	report("final # points " + pData.numPoints);
+
 	// Display result.
-	Point bBoxMin, bBoxMax;
-	region.getBoundingBox(bBoxMin, bBoxMax);
-	report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
-	report("p = []");
-	for(UInt32 i = 0; i < pData.numPoints; ++i)
-	{
-		Float32 x = points[i].x;
-		Float32 y = points[i].y;
-		report("p.append((" + x + ", " + y + "))");
-	}
-	report(pData.numPoints);
+	// Point bBoxMin, bBoxMax;
+	// region.getBoundingBox(bBoxMin, bBoxMax);
+	// report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
+	// report("p = []");
+	// for(UInt32 i = 0; i < pData.numPoints; ++i)
+	// {
+	// 	Float32 x = points[i].x;
+	// 	Float32 y = points[i].y;
+	// 	report("p.append((" + x + ", " + y + "))");
+	// }
 }
 
