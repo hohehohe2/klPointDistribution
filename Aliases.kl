@@ -1,4 +1,4 @@
 require Math;
 
-// [2d/3d]
-alias Vec2 Point;
+//alias Vec2 Point;
+alias Vec3 Point;

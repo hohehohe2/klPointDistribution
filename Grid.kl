@@ -1,8 +1,9 @@
 
 // ===============================================
-/// [2d/3d]
-alias Vec2_i CellCoord;
-alias Vec2_i GridSize;
+//alias Vec2_i CellCoord;
+//alias Vec2_i GridSize;
+alias Vec3_i CellCoord;
+alias Vec3_i GridSize;
 
 // ===============================================
 /// Grid interface.
@@ -33,8 +34,10 @@ function SimpleGrid(GridSize gridSize, Point origin)
 {
 	this.gridSize = gridSize;
 	this.origin = origin;
-	this.cells.resize(gridSize.x * gridSize.y);
-	for(UInt32 i = 0; i < gridSize.x * gridSize.y; ++i)
+	//UInt32 numCells = gridSize.x * gridSize.y;
+	UInt32 numCells = gridSize.x * gridSize.y * gridSize.z;
+	this.cells.resize(numCells);
+	for(UInt32 i = 0; i < numCells; ++i)
 	{
 		this.cells[i] = UInt32Max;
 	}
@@ -47,27 +50,23 @@ function GridSize SimpleGrid.getGridSize()
 
 inline private function Index SimpleGrid.cellToIndex(CellCoord coord)
 {
-	// [2d/3d]
-	//return
-	//	coord.z * this.gridSize.x * this.gridSize.y +
-	//	coord.y * this.gridSize.x +
-	//	coord.x;
-	return coord.y * this.gridSize.x + coord.x;
-
+	//return coord.y * this.gridSize.x + coord.x;
+	return
+		coord.z * this.gridSize.x * this.gridSize.y +
+		coord.y * this.gridSize.x +
+		coord.x;
 }
 
 inline function CellCoord SimpleGrid.getCellCoord(Point pos)
 {
-	// [2d/3d]
-	//return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y, pos.z - this.origin.z);
-	return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y);
+	//return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y);
+	return CellCoord(pos.x - this.origin.x, pos.y - this.origin.y, pos.z - this.origin.z);
 }
 
 inline function Boolean SimpleGrid.isValidCellCoord(CellCoord coord)
 {
-	// [2d/3d]
-	//return coord.x >= 0 && coord.y >= 0 && coord.z >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y && coord.z < this.gridSize.z;
-	return coord.x >= 0 && coord.y >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y;
+	//return coord.x >= 0 && coord.y >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y;
+	return coord.x >= 0 && coord.y >= 0 && coord.z >= 0 && coord.x < this.gridSize.x && coord.y < this.gridSize.y && coord.z < this.gridSize.z;
 }
 
 inline function UInt32 SimpleGrid.getCellValue(CellCoord coord)

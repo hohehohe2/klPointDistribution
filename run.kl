@@ -3,7 +3,7 @@ require PointDistribute;
 operator entry() {
 
 	// Region to sprinkle points.
-	SimpleRectRegion region(Point(0.0, 0.0), Point(10.0, 10.0));
+	SimpleRectRegion region(Point(0.0, 0.0, 0.0), Point(5.0, 5.0, 5.0));
 
 	// Result array.
 	Point points[];
@@ -11,8 +11,8 @@ operator entry() {
 
 	// Distribute.
 	UInt32 seed = 0;
-	UInt32 numPexThreads = getThreadCount();
-	//UInt32 numPexThreads = 1;
+	//UInt32 numPexThreads = getThreadCount();
+	UInt32 numPexThreads = 1;
 
 	PoissonDiskData pData(numPexThreads, points, region, seed);
 	numPexThreads = Math_min(numPexThreads, pData.numPoints);
@@ -40,16 +40,17 @@ operator entry() {
 
 	report("final # points " + pData.numPoints);
 
-	// Display result.
-	// Point bBoxMin, bBoxMax;
-	// region.getBoundingBox(bBoxMin, bBoxMax);
-	// report("minx, miny, maxx, maxy = " + bBoxMin.x + ", " + bBoxMin.y + ", " + bBoxMax.x + ", " + bBoxMax.y);
-	// report("p = []");
-	// for(UInt32 i = 0; i < pData.numPoints; ++i)
-	// {
-	// 	Float32 x = points[i].x;
-	// 	Float32 y = points[i].y;
-	// 	report("p.append((" + x + ", " + y + "))");
-	// }
+	//Display result.
+
+	Point bBoxMin, bBoxMax;
+	region.getBoundingBox(bBoxMin, bBoxMax);
+	report("p = []");
+	for(UInt32 i = 0; i < pData.numPoints; ++i)
+	{
+		Float32 x = points[i].x;
+		Float32 y = points[i].y;
+		Float32 z = points[i].z;
+		report("p.append((" + x + ", " + y + ", " + z + "))");
+	}
 }
 

@@ -30,13 +30,12 @@ function SimpleRectRegion.getBoundingBox(io Point bBoxMin, io Point bBoxMax)
 
 function Boolean SimpleRectRegion.isInside(Point point)
 {
-	// [2d/3d]
 	//return
-	//	(this.bBoxMin.x < point.x && point.x < this.bBoxMin.x) &&
-	//	(this.bBoxMin.y < point.y && point.y < this.bBoxMin.y) &&
-	//	(this.bBoxMin.z < point.z && point.z < this.bBoxMin.z);
+	//	(this.bBoxMin.x < point.x && point.x < this.bBoxMax.x) &&
+	//	(this.bBoxMin.y < point.y && point.y < this.bBoxMax.y); 
 	return
 		(this.bBoxMin.x < point.x && point.x < this.bBoxMax.x) &&
-		(this.bBoxMin.y < point.y && point.y < this.bBoxMax.y); 
+		(this.bBoxMin.y < point.y && point.y < this.bBoxMax.y) &&
+		(this.bBoxMin.z < point.z && point.z < this.bBoxMax.z);
 }
 	
