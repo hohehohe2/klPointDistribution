@@ -275,7 +275,8 @@ private function Point PoissonDiskDistributor.uniformAnnulusDistribute!(Float32 
 		Float32 x = this.randGen.generate01() * radius * 2.0 - radius;
 		Float32 y = this.randGen.generate01() * radius * 2.0 - radius;
 		Float32 z = this.randGen.generate01() * radius * 2.0 - radius;
-		if(x * x + y * y + z * z > radius * radius)
+		Float32 dist2 = x * x + y * y + z * z;
+		if(dist2 > radius * radius && dist2 < radius * radius * 4)
 		return Point(x, y, z);
 	}
 	return Point();
