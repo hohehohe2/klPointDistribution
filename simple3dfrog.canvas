@@ -2,16 +2,16 @@
   "objectType" : "Graph",
   "metadata" : {
     "timeline_timerFps" : "60",
-    "camera_mat44" : "{\n  \"row0\" : {\n    \"x\" : -0.09264218062162399,\n    \"y\" : -0.7485398054122925,\n    \"z\" : 0.6570209264755249,\n    \"t\" : 18.9281177520752\n    },\n  \"row1\" : {\n    \"x\" : 3.280116516179987e-06,\n    \"y\" : 0.6595280170440674,\n    \"z\" : 0.7521421909332275,\n    \"t\" : 17.47214889526367\n    },\n  \"row2\" : {\n    \"x\" : -0.9962696433067322,\n    \"y\" : 0.069608174264431,\n    \"z\" : -0.06109326332807541,\n    \"t\" : 7.436551094055176\n    },\n  \"row3\" : {\n    \"x\" : 0,\n    \"y\" : 0,\n    \"z\" : 0,\n    \"t\" : 1\n    }\n  }",
+    "camera_mat44" : "{\n  \"row0\" : {\n    \"x\" : 0.9162821769714355,\n    \"y\" : -0.2497988194227219,\n    \"z\" : 0.3150045871734619,\n    \"t\" : 1.590111136436462\n    },\n  \"row1\" : {\n    \"x\" : 1.344940847047837e-05,\n    \"y\" : 0.7834240198135376,\n    \"z\" : 0.6219332218170166,\n    \"t\" : 10.67302417755127\n    },\n  \"row2\" : {\n    \"x\" : -0.402120977640152,\n    \"y\" : -0.5691711902618408,\n    \"z\" : 0.7177975177764893,\n    \"t\" : 20.6525764465332\n    },\n  \"row3\" : {\n    \"x\" : 0,\n    \"y\" : 0,\n    \"z\" : 0,\n    \"t\" : 1\n    }\n  }",
     "timeline_start" : "1",
     "timeline_loopMode" : "1",
-    "uiGraphZoom" : "{\n  \"value\" : 0.8969452977180481\n  }",
+    "uiGraphZoom" : "{\n  \"value\" : 0.9581847786903381\n  }",
     "timeline_simMode" : "0",
-    "camera_focalDistance" : "36.95664978027344",
+    "camera_focalDistance" : "22.26481437683105",
     "timeline_current" : "1",
     "timeline_timerInterval" : "20",
     "timeline_end" : "2000",
-    "uiGraphPan" : "{\n  \"x\" : 197.3192135275357,\n  \"y\" : 2109.826816398984\n  }"
+    "uiGraphPan" : "{\n  \"x\" : 177.0579986572266,\n  \"y\" : 2134.32373046875\n  }"
     },
   "title" : "",
   "ports" : [
@@ -436,7 +436,7 @@ dfgEntry
         "code" : "dfgEntry
 {
 	// Region to sprinkle points.
-	SimpleRectRegion region(Point(0.0, 0.0, 0.0), Point(10.0, 10.0, 10.0));
+	SimpleRectRegion region(Point(-5.0, -5.0, -5.0), Point(7.0, 7.0, 7.0));
 
 	// Result array.
 	Point points[];
@@ -871,6 +871,59 @@ dfgEntry
 }
 "
         }
+      },
+    {
+      "objectType" : "Inst",
+      "metadata" : {
+        "uiGraphPos" : "{\"x\":389.6765298843384,\"y\":-2261.591601848602}"
+        },
+      "name" : "Transform_1",
+      "ports" : [
+        {
+          "objectType" : "InstPort",
+          "name" : "exec",
+          "nodePortType" : "IO"
+          },
+        {
+          "objectType" : "InstPort",
+          "name" : "mesh",
+          "nodePortType" : "In"
+          },
+        {
+          "objectType" : "InstPort",
+          "name" : "xfo",
+          "nodePortType" : "In",
+          "defaultValues" : {
+            "Xfo" : {
+              "ori" : {
+                "v" : {
+                  "x" : 0,
+                  "y" : 0,
+                  "z" : 0
+                  },
+                "w" : 1
+                },
+              "tr" : {
+                "x" : 0,
+                "y" : 0,
+                "z" : 0
+                },
+              "sc" : {
+                "x" : 1,
+                "y" : 1,
+                "z" : 1
+                }
+              }
+            }
+          },
+        {
+          "objectType" : "InstPort",
+          "name" : "result",
+          "nodePortType" : "Out"
+          }
+        ],
+      "executable" : "Fabric.Compounds.PolygonMesh.Modify.Transform",
+      "presetGUID" : "4293D289E438FE24AF2B0BA7FF7CDCEA"
       }
     ],
   "connections" : {
@@ -890,7 +943,8 @@ dfgEntry
       "ToXfo.pointcloud"
       ],
     "createPoints.outPoints" : [
-      "func.points"
+      "func.points",
+      "Create_2.points"
       ],
     "Load_1.archive" : [
       "GetPaths_1.archive"
@@ -914,11 +968,11 @@ dfgEntry
       "this"
       ],
     "PrepareForSpatialQueries_1.this" : [
+      "Transform_1.mesh"
+      ],
+    "Transform_1.result" : [
       "DrawPolygonMesh_1.mesh",
       "func.mesh"
-      ],
-    "func.points" : [
-      "Create_2.points"
       ]
     },
   "requiredPresets" : {
@@ -5864,6 +5918,214 @@ dfgEntry {
 
 dfgEntry {
   this.prepareForSpatialQueries(approximateNumberOfQueries, options);
+}
+"
+      },
+    "Fabric.Compounds.PolygonMesh.Modify.Transform" : {
+      "objectType" : "Graph",
+      "metadata" : {
+        "uiNodeColor" : "{\n  \"r\" : 120,\n  \"g\" : 130,\n  \"b\" : 144\n  }",
+        "uiGraphZoom" : "{\n  \"value\" : 0.8835999965667725\n  }",
+        "uiHeaderColor" : "{\n  \"r\" : 88,\n  \"g\" : 92,\n  \"b\" : 110\n  }",
+        "uiTooltip" : "transforms (= translates/rotates/scales) a polygon mesh.",
+        "uiGraphPan" : "{\n  \"x\" : 40.27440062761309,\n  \"y\" : 20.37000020861629\n  }"
+        },
+      "title" : "Transform",
+      "ports" : [
+        {
+          "objectType" : "ExecPort",
+          "name" : "exec",
+          "nodePortType" : "IO",
+          "execPortType" : "IO",
+          "typeSpec" : "Execute"
+          },
+        {
+          "objectType" : "ExecPort",
+          "name" : "mesh",
+          "nodePortType" : "Out",
+          "execPortType" : "In",
+          "typeSpec" : "PolygonMesh"
+          },
+        {
+          "objectType" : "ExecPort",
+          "name" : "xfo",
+          "nodePortType" : "Out",
+          "execPortType" : "In",
+          "typeSpec" : "Xfo"
+          },
+        {
+          "objectType" : "ExecPort",
+          "name" : "result",
+          "nodePortType" : "In",
+          "execPortType" : "Out",
+          "typeSpec" : "PolygonMesh"
+          }
+        ],
+      "extDeps" : {
+        "Geometry" : "*"
+        },
+      "presetGUID" : "4293D289E438FE24AF2B0BA7FF7CDCEA",
+      "nodes" : [
+        {
+          "objectType" : "Inst",
+          "metadata" : {
+            "uiGraphPos" : "{\"x\": 725, \"y\": 131}"
+            },
+          "name" : "Cache",
+          "ports" : [
+            {
+              "objectType" : "InstPort",
+              "name" : "exec",
+              "nodePortType" : "IO"
+              },
+            {
+              "objectType" : "InstPort",
+              "name" : "value",
+              "nodePortType" : "In"
+              }
+            ],
+          "executable" : "Fabric.Core.Data.Cache",
+          "presetGUID" : "D903AFD981FE9214C69943F542D5FD60"
+          },
+        {
+          "objectType" : "Inst",
+          "metadata" : {
+            "uiGraphPos" : "{\"x\": 452.5, \"y\": 130.5}"
+            },
+          "name" : "applyTransform",
+          "ports" : [
+            {
+              "objectType" : "InstPort",
+              "name" : "exec",
+              "nodePortType" : "IO"
+              },
+            {
+              "objectType" : "InstPort",
+              "name" : "mesh",
+              "nodePortType" : "IO"
+              },
+            {
+              "objectType" : "InstPort",
+              "name" : "xfo",
+              "nodePortType" : "In"
+              }
+            ],
+          "definition" : {
+            "objectType" : "Func",
+            "title" : "applyTransform",
+            "ports" : [
+              {
+                "objectType" : "ExecPort",
+                "name" : "exec",
+                "nodePortType" : "IO",
+                "execPortType" : "IO",
+                "typeSpec" : "Execute"
+                },
+              {
+                "objectType" : "ExecPort",
+                "name" : "mesh",
+                "nodePortType" : "IO",
+                "execPortType" : "IO",
+                "typeSpec" : "PolygonMesh"
+                },
+              {
+                "objectType" : "ExecPort",
+                "name" : "xfo",
+                "nodePortType" : "Out",
+                "execPortType" : "In",
+                "typeSpec" : "Xfo"
+                }
+              ],
+            "extDeps" : {},
+            "code" : "require Geometry;
+
+dfgEntry
+{
+  mesh.applyTransform(xfo);
+}
+
+"
+            }
+          },
+        {
+          "objectType" : "Inst",
+          "metadata" : {
+            "uiGraphPos" : "{\"x\": 251, \"y\": 39}"
+            },
+          "name" : "ClonePolygonMesh",
+          "ports" : [
+            {
+              "objectType" : "InstPort",
+              "name" : "exec",
+              "nodePortType" : "IO"
+              },
+            {
+              "objectType" : "InstPort",
+              "name" : "value",
+              "nodePortType" : "In"
+              },
+            {
+              "objectType" : "InstPort",
+              "name" : "result",
+              "nodePortType" : "Out"
+              }
+            ],
+          "executable" : "Fabric.Exts.Geometry.PolygonMesh.ClonePolygonMesh",
+          "presetGUID" : "8480EBBD95E54A412E1471D01B474BA2"
+          }
+        ],
+      "connections" : {
+        "mesh" : [
+          "ClonePolygonMesh.value"
+          ],
+        "xfo" : [
+          "applyTransform.xfo"
+          ],
+        "Cache.value" : [
+          "result"
+          ],
+        "applyTransform.mesh" : [
+          "Cache.value"
+          ],
+        "ClonePolygonMesh.result" : [
+          "applyTransform.mesh"
+          ]
+        }
+      },
+    "Fabric.Exts.Geometry.PolygonMesh.ClonePolygonMesh" : {
+      "objectType" : "Func",
+      "metadata" : {
+        "uiNodeColor" : "{\n  \"r\" : 214,\n  \"g\" : 191,\n  \"b\" : 103\n  }",
+        "uiHeaderColor" : "{\n  \"r\" : 188,\n  \"g\" : 129,\n  \"b\" : 83\n  }"
+        },
+      "title" : "ClonePolygonMesh",
+      "ports" : [
+        {
+          "objectType" : "ExecPort",
+          "name" : "exec",
+          "nodePortType" : "IO",
+          "execPortType" : "IO",
+          "typeSpec" : "Execute"
+          },
+        {
+          "objectType" : "ExecPort",
+          "name" : "value",
+          "nodePortType" : "Out",
+          "execPortType" : "In",
+          "typeSpec" : "PolygonMesh"
+          },
+        {
+          "objectType" : "ExecPort",
+          "name" : "result",
+          "nodePortType" : "In",
+          "execPortType" : "Out",
+          "typeSpec" : "PolygonMesh"
+          }
+        ],
+      "extDeps" : {},
+      "presetGUID" : "8480EBBD95E54A412E1471D01B474BA2",
+      "code" : "dfgEntry {
+  result = value.clone();
 }
 "
       }
