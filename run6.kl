@@ -32,6 +32,7 @@ function Boolean readFabricFrog(io PolygonMesh mesh)
 }
 
 operator entry() {
+
 	PolygonMesh mesh();
 	if( ! readFabricFrog(mesh))
 	{

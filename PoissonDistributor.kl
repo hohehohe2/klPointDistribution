@@ -1,4 +1,5 @@
 require FabricSynchronization;
+require Geometry;
 
 const UInt32 DIMENSION = 3;
 
@@ -71,15 +72,17 @@ function Boolean GridNeighborFinder.isNeighborExists(Point searchPoint, Float32 
 /// Thread shared data for Poisson disk calculation.
 object PoissonDiskData
 {
-	/// result points list. For implementation reason points[0] is not used.
+	/// Result points list. For implementation reason points[0] is not used.
 	Point points[];
 	/// Number of created points.
 	UInt32 numPoints;
-	/// grid used to distribute points.
+	/// Grid used to distribute points.
 	IGrid grid;
-	/// region to define where to create points.
+	/// Region to define where to create points.
 	IRegion region;
-	/// thread lock.
+	/// Mesh for the points to stick with, can be null.
+	PolygonMesh mesh;
+	/// Thread lock.
 	FastReadersWriterLock lock;
 };
 
@@ -106,6 +109,16 @@ private function PoissonDiskData.initializePoints!(UInt32 numPexThreads, io UInt
 		Float32 z = randGen.generate(bBoxMin.z, bBoxMax.z);
 		//Point point(x, y);
 		Point point(x, y, z);
+
+		if(this.mesh)
+		{
+			GeometryLocation location = this.mesh.getClosest(point, Vec3(1, 1, 1), SCALAR_INFINITE);
+			if( ! location.isValid())
+			{
+				return;
+			}
+			point = this.mesh.getPositionAtLocation(location);
+		}
 
 		if(this.region.isInside(point))
 		{
@@ -134,11 +147,12 @@ private function PoissonDiskData.initializePoints!(UInt32 numPexThreads, io UInt
 	}
 }
 
-function PoissonDiskData(UInt32 numPexThreads, io Point points[], IRegion region, io UInt32 seed)
+function PoissonDiskData(UInt32 numPexThreads, io Point points[], IRegion region, io UInt32 seed, PolygonMesh mesh)
 {
 	this.lock = FastReadersWriterLock();
 	this.points = points;
 	this.region = region;
+	this.mesh = mesh;
 
 	// Initialize grid.
 	Point bBoxMin;
@@ -209,6 +223,16 @@ function PoissonDiskDistributor.run!(Point startPoint)
 		{
 			Point searchPoint = currentPoint + this.uniformAnnulusDistribute(radius);
 
+			if(this.pData.mesh)
+			{
+				GeometryLocation location = this.pData.mesh.getClosest(searchPoint, Vec3(1, 1, 1), SCALAR_INFINITE);
+				if( ! location.isValid())
+				{
+					return;
+				}
+				searchPoint = this.pData.mesh.getPositionAtLocation(location);
+			}
+
 			if( ! this.pData.region.isInside(searchPoint))
 			{
 				continue;
@@ -268,8 +292,7 @@ private function Point PoissonDiskDistributor.uniformAnnulusDistribute!(Float32 
 	// Inverse function	of c = 1/3*(h^3 + H^2 + h)
 	//		c: cumulative distribution function
 	//		h: uniform rand [0, 1]
-	// TODO: Do not have time to calculate, just get a uniform distribution
-	// TODO: and reject outside the sphere.
+	// TODO: For now just get a uniform distribution and reject if outside.
 	while(true)
 	{
 		Float32 x = this.randGen.generate01() * radius * 2.0 - radius;

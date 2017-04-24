@@ -2,16 +2,16 @@
   "objectType" : "Graph",
   "metadata" : {
     "timeline_timerFps" : "60",
-    "camera_mat44" : "{\n  \"row0\" : {\n    \"x\" : 0.9162821769714355,\n    \"y\" : -0.2497988194227219,\n    \"z\" : 0.3150045871734619,\n    \"t\" : 1.590111136436462\n    },\n  \"row1\" : {\n    \"x\" : 1.344940847047837e-05,\n    \"y\" : 0.7834240198135376,\n    \"z\" : 0.6219332218170166,\n    \"t\" : 10.67302417755127\n    },\n  \"row2\" : {\n    \"x\" : -0.402120977640152,\n    \"y\" : -0.5691711902618408,\n    \"z\" : 0.7177975177764893,\n    \"t\" : 20.6525764465332\n    },\n  \"row3\" : {\n    \"x\" : 0,\n    \"y\" : 0,\n    \"z\" : 0,\n    \"t\" : 1\n    }\n  }",
+    "camera_mat44" : "{\n  \"row0\" : {\n    \"x\" : -0.3738361895084381,\n    \"y\" : -0.4933493137359619,\n    \"z\" : 0.7861639261245728,\n    \"t\" : 32.17170333862305\n    },\n  \"row1\" : {\n    \"x\" : 1.789543784980197e-05,\n    \"y\" : 0.846871554851532,\n    \"z\" : 0.5322546362876892,\n    \"t\" : 26.47983360290527\n    },\n  \"row2\" : {\n    \"x\" : -0.9283416867256165,\n    \"y\" : 0.1986842751502991,\n    \"z\" : -0.316571980714798,\n    \"t\" : -13.41474533081055\n    },\n  \"row3\" : {\n    \"x\" : 0,\n    \"y\" : 0,\n    \"z\" : 0,\n    \"t\" : 1\n    }\n  }",
     "timeline_start" : "1",
     "timeline_loopMode" : "1",
-    "uiGraphZoom" : "{\n  \"value\" : 0.9581847786903381\n  }",
+    "uiGraphZoom" : "{\n  \"value\" : 0.4998916983604431\n  }",
     "timeline_simMode" : "0",
-    "camera_focalDistance" : "22.26481437683105",
+    "camera_focalDistance" : "42.38198471069336",
     "timeline_current" : "1",
     "timeline_timerInterval" : "20",
     "timeline_end" : "2000",
-    "uiGraphPan" : "{\n  \"x\" : 177.0579986572266,\n  \"y\" : 2134.32373046875\n  }"
+    "uiGraphPan" : "{\n  \"x\" : 279.3158576394186,\n  \"y\" : 1194.083739008606\n  }"
     },
   "title" : "",
   "ports" : [
@@ -371,7 +371,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":194.6193969249725,\"y\":-1984.82715177536}",
+        "uiGraphPos" : "{\"x\":194.6194000244141,\"y\":-1984.8271484375}",
         "uiCollapsedState" : "0"
         },
       "name" : "createPoints",
@@ -388,12 +388,7 @@ dfgEntry
           },
         {
           "objectType" : "InstPort",
-          "name" : "scaleX",
-          "nodePortType" : "In"
-          },
-        {
-          "objectType" : "InstPort",
-          "name" : "scaleY",
+          "name" : "mesh",
           "nodePortType" : "In"
           }
         ],
@@ -417,17 +412,10 @@ dfgEntry
             },
           {
             "objectType" : "ExecPort",
-            "name" : "scaleX",
+            "name" : "mesh",
             "nodePortType" : "Out",
             "execPortType" : "In",
-            "typeSpec" : "Float32"
-            },
-          {
-            "objectType" : "ExecPort",
-            "name" : "scaleY",
-            "nodePortType" : "Out",
-            "execPortType" : "In",
-            "typeSpec" : "Float32"
+            "typeSpec" : "PolygonMesh"
             }
           ],
         "extDeps" : {
@@ -436,7 +424,7 @@ dfgEntry
         "code" : "dfgEntry
 {
 	// Region to sprinkle points.
-	SimpleRectRegion region(Point(-5.0, -5.0, -5.0), Point(7.0, 7.0, 7.0));
+	SimpleRectRegion region(Point(-12.0, -1.0, -15.0), Point(13, 20, 20));
 
 	// Result array.
 	Point points[];
@@ -447,7 +435,7 @@ dfgEntry
 	//UInt32 numPexThreads = getThreadCount();
 	UInt32 numPexThreads = 1;
 
-	PoissonDiskData pData(numPexThreads, points, region, seed);
+	PoissonDiskData pData(numPexThreads, points, region, seed, mesh);
 	numPexThreads = Math_min(numPexThreads, pData.numPoints);
 
 	PoissonDiskDistributor distributors[];
@@ -473,19 +461,6 @@ dfgEntry
 
 	report(\"final # points \" + pData.numPoints);
 
-	//Display result.
-
-	Point bBoxMin, bBoxMax;
-	region.getBoundingBox(bBoxMin, bBoxMax);
-	report(\"p = []\");
-	for(UInt32 i = 0; i < pData.numPoints; ++i)
-	{
-		Float32 x = points[i].x;
-		Float32 y = points[i].y;
-		Float32 z = points[i].z;
-		report(\"p.append((\" + x + \", \" + y + \", \" + z + \"))\");
-	}
-
 	outPoints = pData.points;
 }
 
@@ -495,7 +470,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":-530.2609837055206,\"y\":-2319.826288223267}"
+        "uiGraphPos" : "{\"x\":-530.260986328125,\"y\":-2319.826171875}"
         },
       "name" : "Load_1",
       "ports" : [
@@ -524,7 +499,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":-378.4896214008331,\"y\":-2331.962518692017}"
+        "uiGraphPos" : "{\"x\":-378.4896240234375,\"y\":-2331.96240234375}"
         },
       "name" : "GetPaths_1",
       "ports" : [
@@ -568,7 +543,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":-196.3839886188507,\"y\":-2244.011835098267}"
+        "uiGraphPos" : "{\"x\":-196.3839874267578,\"y\":-2244.01171875}"
         },
       "name" : "Get_1",
       "ports" : [
@@ -602,7 +577,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":-43.00294232368469,\"y\":-2285.407587051392}"
+        "uiGraphPos" : "{\"x\":-43.0029411315918,\"y\":-2285.407470703125}"
         },
       "name" : "GetMesh_1",
       "ports" : [
@@ -758,7 +733,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":100.8335902690887,\"y\":-2269.100946426392}"
+        "uiGraphPos" : "{\"x\":100.8335876464844,\"y\":-2269.100830078125}"
         },
       "name" : "PrepareForSpatialQueries_1",
       "ports" : [
@@ -812,70 +787,7 @@ dfgEntry
     {
       "objectType" : "Inst",
       "metadata" : {
-        "uiGraphPos" : "{\"x\":430.2951459884644,\"y\":-2045.25120306015}"
-        },
-      "name" : "func",
-      "ports" : [
-        {
-          "objectType" : "InstPort",
-          "name" : "exec",
-          "nodePortType" : "IO"
-          },
-        {
-          "objectType" : "InstPort",
-          "name" : "mesh",
-          "nodePortType" : "In"
-          },
-        {
-          "objectType" : "InstPort",
-          "name" : "points",
-          "nodePortType" : "IO"
-          }
-        ],
-      "definition" : {
-        "objectType" : "Func",
-        "title" : "func",
-        "ports" : [
-          {
-            "objectType" : "ExecPort",
-            "name" : "exec",
-            "nodePortType" : "IO",
-            "execPortType" : "IO",
-            "typeSpec" : "Execute"
-            },
-          {
-            "objectType" : "ExecPort",
-            "name" : "mesh",
-            "nodePortType" : "Out",
-            "execPortType" : "In",
-            "typeSpec" : "PolygonMesh"
-            },
-          {
-            "objectType" : "ExecPort",
-            "name" : "points",
-            "nodePortType" : "IO",
-            "execPortType" : "IO",
-            "typeSpec" : "Vec3[]"
-            }
-          ],
-        "extDeps" : {},
-        "code" : "dfgEntry {
-  for(UInt32 i = 0; i < points.size(); ++i)
-  {
-  	GeometryLocation location = mesh.getClosest(points[i], Vec3(1, 1, 1), SCALAR_INFINITE);
-  	if(location.isValid())
-	  {
-      points[i] = mesh.getPositionAtLocation(location);
-  	}
-  }
-}
-"
-        }
-      },
-    {
-      "objectType" : "Inst",
-      "metadata" : {
-        "uiGraphPos" : "{\"x\":389.6765298843384,\"y\":-2261.591601848602}"
+        "uiGraphPos" : "{\"x\":389.6765441894531,\"y\":-2261.591552734375}"
         },
       "name" : "Transform_1",
       "ports" : [
@@ -909,9 +821,9 @@ dfgEntry
                 "z" : 0
                 },
               "sc" : {
-                "x" : 1,
-                "y" : 1,
-                "z" : 1
+                "x" : 3,
+                "y" : 3,
+                "z" : 3
                 }
               }
             }
@@ -943,7 +855,6 @@ dfgEntry
       "ToXfo.pointcloud"
       ],
     "createPoints.outPoints" : [
-      "func.points",
       "Create_2.points"
       ],
     "Load_1.archive" : [
@@ -972,7 +883,7 @@ dfgEntry
       ],
     "Transform_1.result" : [
       "DrawPolygonMesh_1.mesh",
-      "func.mesh"
+      "createPoints.mesh"
       ]
     },
   "requiredPresets" : {
@@ -2112,9 +2023,9 @@ dfgEntry {
       "metadata" : {
         "uiTextColor" : "{\n  \"r\" : 20,\n  \"g\" : 20,\n  \"b\" : 20\n  }",
         "uiNodeColor" : "{\n  \"r\" : 170,\n  \"g\" : 130,\n  \"b\" : 100\n  }",
-        "uiGraphZoom" : "{\n  \"value\" : 1.713727474212646\n  }",
+        "uiGraphZoom" : "{\n  \"value\" : 0.9191978573799133\n  }",
         "uiTooltip" : "Opens an Alembic file and provides access to its contents. Use this in conjunction with an Alembic.GetPaths node to get access to the table of contents of an Alembic file.",
-        "uiGraphPan" : "{\n  \"x\" : -2141.65478515625,\n  \"y\" : 6.699203491210938\n  }"
+        "uiGraphPan" : "{\n  \"x\" : 134.6165001690388,\n  \"y\" : 162.2389444261789\n  }"
         },
       "title" : "Load",
       "ports" : [
@@ -2318,8 +2229,7 @@ dfgEntry {
         {
           "objectType" : "Inst",
           "metadata" : {
-            "uiGraphPos" : "{\"x\":-61.0,\"y\":25.0}",
-            "uiCollapsedState" : "1"
+            "uiGraphPos" : "{\"x\":-61.0,\"y\":25.0}"
             },
           "name" : "FilePath_1",
           "ports" : [
@@ -2856,9 +2766,9 @@ dfgEntry {
       "metadata" : {
         "uiTextColor" : "{\n  \"r\" : 20,\n  \"g\" : 20,\n  \"b\" : 20\n  }",
         "uiNodeColor" : "{\n  \"r\" : 170,\n  \"g\" : 130,\n  \"b\" : 100\n  }",
-        "uiGraphZoom" : "{\n  \"value\" : 0.9980804324150085\n  }",
+        "uiGraphZoom" : "{\n  \"value\" : 0.5789312720298767\n  }",
         "uiTooltip" : "Retrieves all paths to objects inside of an Alembic file given an archive. Connect this to an Alembic.LoadAlembic node.\nThe mode parameter can be used to switch between the types of paths retrieved.\nWith the filterSearch you can filter the results based on occurence within the paths.\nThe invertSearch checkbox allows to switch between inclusive and exclusive search.",
-        "uiGraphPan" : "{\n  \"x\" : -2266.38818359375,\n  \"y\" : 89.85238647460938\n  }"
+        "uiGraphPan" : "{\n  \"x\" : 27.24798583984375,\n  \"y\" : 78.5137939453125\n  }"
         },
       "title" : "GetPaths",
       "ports" : [
@@ -3539,7 +3449,7 @@ dfgEntry {
         {
           "objectType" : "Inst",
           "metadata" : {
-            "uiGraphPos" : "{\"x\":-441.6931021213531,\"y\":312.4051622152328}",
+            "uiGraphPos" : "{\"x\":-440.1286010742188,\"y\":310.0583801269531}",
             "uiCollapsedState" : "1"
             },
           "name" : "Eq_2",
@@ -3609,7 +3519,7 @@ dfgEntry {
         {
           "objectType" : "Inst",
           "metadata" : {
-            "uiGraphPos" : "{\"x\":-477.6590354442596,\"y\":868.8887939453125}",
+            "uiGraphPos" : "{\"x\":-472.1833190917969,\"y\":866.5421142578125}",
             "uiCollapsedState" : "1"
             },
           "name" : "Eq_4",
@@ -3644,7 +3554,7 @@ dfgEntry {
         {
           "objectType" : "Inst",
           "metadata" : {
-            "uiGraphPos" : "{\"x\":-479.0321632623672,\"y\":1012.036509394646}",
+            "uiGraphPos" : "{\"x\":-475.1209106445313,\"y\":987.7868041992188}",
             "uiCollapsedState" : "1"
             },
           "name" : "Eq_5",
@@ -4483,9 +4393,9 @@ dfgEntry {
       "metadata" : {
         "uiTextColor" : "{\n  \"r\" : 20,\n  \"g\" : 20,\n  \"b\" : 20\n  }",
         "uiNodeColor" : "{\n  \"r\" : 170,\n  \"g\" : 130,\n  \"b\" : 100\n  }",
-        "uiGraphZoom" : "{\n  \"value\" : 0.9843353629112244\n  }",
+        "uiGraphZoom" : "{\n  \"value\" : 0.4408264756202698\n  }",
         "uiTooltip" : "Provides access to a single mesh within an alembic file given the archive and path inside the file. If the path does not refer to an PolyMesh object an empty geometry is returned.",
-        "uiGraphPan" : "{\n  \"x\" : -238.7467594825905,\n  \"y\" : -110.9917132520498\n  }"
+        "uiGraphPan" : "{\n  \"x\" : 614.3791037193714,\n  \"y\" : 97.33870571931129\n  }"
         },
       "title" : "GetMesh",
       "ports" : [
@@ -5925,10 +5835,8 @@ dfgEntry {
       "objectType" : "Graph",
       "metadata" : {
         "uiNodeColor" : "{\n  \"r\" : 120,\n  \"g\" : 130,\n  \"b\" : 144\n  }",
-        "uiGraphZoom" : "{\n  \"value\" : 0.8835999965667725\n  }",
         "uiHeaderColor" : "{\n  \"r\" : 88,\n  \"g\" : 92,\n  \"b\" : 110\n  }",
-        "uiTooltip" : "transforms (= translates/rotates/scales) a polygon mesh.",
-        "uiGraphPan" : "{\n  \"x\" : 40.27440062761309,\n  \"y\" : 20.37000020861629\n  }"
+        "uiTooltip" : "transforms (= translates/rotates/scales) a polygon mesh."
         },
       "title" : "Transform",
       "ports" : [

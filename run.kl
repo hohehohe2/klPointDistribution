@@ -1,9 +1,42 @@
+require Geometry;
+require FileIO;
+require AlembicWrapper;
 require PointDistribute;
+require Math;
+
+function Boolean readFabricFrog(io PolygonMesh mesh)
+{
+	FilePath filePath("${FABRIC_DIR}/Resources/frog.abc");
+	filePath = filePath.expandEnvVars();
+	String filePathStr = filePath.string();
+	AlembicArchiveReader aaReader(filePathStr);
+	String allPaths[];
+	allPaths = aaReader.getAllPaths();
+	String path;
+	for(UInt32 i = 0; i < allPaths.size(); ++i)
+	{
+		if(aaReader.getObjectType(allPaths[i]) == "PolyMesh")
+		{
+			path = allPaths[i];
+			break;
+		}
+	}
+	if( path == "" )
+	{
+		report("No mesh found");
+		return PolygonMesh();
+	}
+
+	AlembicPolyMeshReader reader = aaReader.getPolyMesh(path);
+	reader.readSample(0.0, true, mesh);
+
+	return mesh;
+}
 
 operator entry() {
 
 	// Region to sprinkle points.
-	SimpleRectRegion region(Point(0.0, 0.0, 0.0), Point(5.0, 5.0, 5.0));
+	SimpleRectRegion region(Point(-12.0, -1.0, -15.0), Point(13, 20, 20));
 
 	// Result array.
 	Point points[];
@@ -14,7 +47,15 @@ operator entry() {
 	//UInt32 numPexThreads = getThreadCount();
 	UInt32 numPexThreads = 1;
 
-	PoissonDiskData pData(numPexThreads, points, region, seed);
+	PolygonMesh mesh();
+	if( ! readFabricFrog(mesh))
+	{
+		return;
+	}
+	mesh.applyTransform(Xfo(Quat(), Vec3(), Vec3(3, 3, 3)));
+	mesh.prepareForSpatialQueries(65536, null);
+
+	PoissonDiskData pData(numPexThreads, points, region, seed, mesh);
 	numPexThreads = Math_min(numPexThreads, pData.numPoints);
 
 	PoissonDiskDistributor distributors[];
@@ -42,15 +83,15 @@ operator entry() {
 
 	//Display result.
 
-	Point bBoxMin, bBoxMax;
-	region.getBoundingBox(bBoxMin, bBoxMax);
-	report("p = []");
-	for(UInt32 i = 0; i < pData.numPoints; ++i)
-	{
-		Float32 x = points[i].x;
-		Float32 y = points[i].y;
-		Float32 z = points[i].z;
-		report("p.append((" + x + ", " + y + ", " + z + "))");
-	}
+	// Point bBoxMin, bBoxMax;
+	// region.getBoundingBox(bBoxMin, bBoxMax);
+	// report("p = []");
+	// for(UInt32 i = 0; i < pData.numPoints; ++i)
+	// {
+	// 	Float32 x = points[i].x;
+	// 	Float32 y = points[i].y;
+	// 	Float32 z = points[i].z;
+	// 	report("p.append((" + x + ", " + y + ", " + z + "))");
+	// }
 }
 
